@@ -1,0 +1,36 @@
+{
+  "users": [
+    {
+      "id": "1",
+      "email": "admin@canvasai.fwd",
+      "password": "123",
+      "name": "Isaac Andrés Cascante Linares",
+      "role": "admin"
+    },
+    {
+      "id": "2",
+      "email": "usuario@canvasai.fwd",
+      "password": "123",
+      "name": "Usuario Desarrollador FWD",
+      "role": "user"
+    }
+  ],
+  "projects": [
+    {
+      "id": "p1",
+      "name": "Dashboard Administrativo CanvasAI",
+      "description": "Panel de administración y estadísticas de IA",
+      "createdAt": "2026-09-21T10:00:00Z",
+      "status": "activo",
+      "ownerId": "1"
+    },
+    {
+      "id": "p2",
+      "name": "Lienzo Copilot Generativo",
+      "description": "Estudio visual interactivo con Fabric.js y Gemini 1.5",
+      "createdAt": "2026-09-21T11:30:00Z",
+      "status": "en progreso",
+      "ownerId": "2"
+    }
+  ]
+}
