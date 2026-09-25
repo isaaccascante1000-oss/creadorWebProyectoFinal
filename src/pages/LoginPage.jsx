@@ -1,21 +1,15 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { VisualStage } from '../components/VisualStage';
 import { AuthCard } from '../components/AuthCard';
 import { ToastNotification } from '../components/ToastNotification';
 import { AccessibilityToolbar } from '../components/AccessibilityToolbar';
 import { useAuth } from '../context/AuthContext';
+import { authService } from '../services/authService';
 
 export const LoginPage = () => {
   const navigate = useNavigate();
-  const { isAuthenticated, role } = useAuth();
-
-  useEffect(() => {
-    if (isAuthenticated) {
-      const targetRoute = role === 'admin' ? '/admin' : '/canvas';
-      navigate(targetRoute, { replace: true });
-    }
-  }, [isAuthenticated, role, navigate]);
+  const { isAuthenticated, role, login } = useAuth();
 
   const [toastState, setToastState] = useState({
     show: false,
@@ -30,8 +24,42 @@ export const LoginPage = () => {
     }, 4000);
   };
 
+  useEffect(() => {
+    if (isAuthenticated) {
+      const targetRoute = role === 'admin' ? '/admin' : '/canvas';
+      navigate(targetRoute, { replace: true });
+    }
+  }, [isAuthenticated, role, navigate]);
+
+  useEffect(() => {
+    if (!window.location.search) return undefined;
+
+    let active = true;
+    const completeOAuth = async () => {
+      const result = await authService.completeOAuthCallback();
+      if (!active) return;
+
+      const params = new URLSearchParams(window.location.search);
+      window.history.replaceState({}, document.title, window.location.pathname);
+      if (result.success) {
+        login(result.user);
+        handleShowToast('Autenticación completada. Redirigiendo...', 'verified_user');
+        navigate(result.user.role === 'admin' ? '/admin' : '/canvas', { replace: true });
+      } else if (params.has('code') || params.has('error')) {
+        handleShowToast(result.error, 'error');
+      }
+    };
+
+    completeOAuth();
+    return () => { active = false; };
+  }, [login, navigate]);
+
   return (
     <main className="w-full min-h-screen flex items-center justify-center bg-surface relative overflow-x-hidden">
+      <Link to="/" className="fixed top-4 left-4 z-50 inline-flex items-center gap-1 rounded-lg bg-surface-container-highest/90 px-3 py-2 text-sm font-semibold text-on-surface shadow-lg backdrop-blur-md transition hover:text-primary focus:outline-none focus:ring-2 focus:ring-primary" aria-label="Volver a la Landing Page">
+        <span className="material-symbols-outlined text-lg">arrow_back</span>
+        Volver al inicio
+      </Link>
       {/* Floating Accessibility Control Toolbar */}
       <div className="fixed top-4 right-4 z-50">
         <AccessibilityToolbar />

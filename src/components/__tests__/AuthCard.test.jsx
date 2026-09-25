@@ -52,7 +52,7 @@ describe('AuthCard', () => {
     await userEvent.click(submitBtn);
 
     await waitFor(() => {
-      expect(authService.login).toHaveBeenCalledWith('admin@canvasai.fwd', '••••••••', 'admin');
+      expect(authService.login).toHaveBeenCalledWith('admin@canvasai.fwd', '123', 'admin');
     });
 
     await waitFor(() => {
