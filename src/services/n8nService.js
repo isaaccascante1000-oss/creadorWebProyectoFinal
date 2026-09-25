@@ -1,7 +1,69 @@
 const N8N_REGISTER_WEBHOOK = import.meta.env.VITE_N8N_REGISTER_WEBHOOK_URL || 'https://n8n.canvasai.fwd/webhook/user-registration';
 const N8N_PROJECT_WEBHOOK = import.meta.env.VITE_N8N_PROJECT_EXPORT_WEBHOOK_URL || 'https://n8n.canvasai.fwd/webhook/project-export';
+const N8N_WEBHOOK_URL = import.meta.env.VITE_N8N_WEBHOOK_URL || 'http://localhost:5678/webhook/chat-ejercicio-1';
 
 export const n8nService = {
+  /**
+   * Dispara un flujo genérico en N8N
+   * @param {Object} payload - Carga útil a enviar
+   */
+  async triggerWorkflow(payload) {
+    if (!N8N_WEBHOOK_URL) {
+      return new Promise((resolve) => {
+        setTimeout(() => {
+          resolve({
+            success: true,
+            result: { message: 'Simulated success (No VITE_N8N_WEBHOOK_URL)', data: payload },
+            error: null
+          });
+        }, 1500);
+      });
+    }
+
+    try {
+      // Ensure payload matches expected structure requested
+      const requestPayload = {
+        prompt: payload.prompt || '',
+        canvasJson: payload.canvasJson || {},
+        user: payload.user || null,
+        ...payload
+      };
+
+      const response = await fetch(N8N_WEBHOOK_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(requestPayload)
+      });
+
+      if (!response.ok) {
+        throw new Error(`Error HTTP de n8n: ${response.status}`);
+      }
+
+      // n8n 'Respond to Webhook' node returns JSON.
+      const result = await response.json().catch(() => ({}));
+      console.log('DEBUG N8N RESPONSE:', result);
+      
+      let extractedJsx = result;
+      if (result.output) extractedJsx = result.output;
+      else if (result.text) extractedJsx = result.text;
+      else if (result.message) extractedJsx = result.message;
+      else if (Array.isArray(result) && result[0]?.output) extractedJsx = result[0].output;
+      else if (typeof result === 'string') extractedJsx = result;
+
+      return { 
+        success: true, 
+        data: { jsxCode: extractedJsx },
+        error: null 
+      };
+    } catch (error) {
+      console.error('Error al contactar n8n webhook:', error);
+      return { 
+        success: false, 
+        result: null, 
+        error: 'No se pudo contactar al servidor n8n. ' + error.message 
+      };
+    }
+  },
   /**
    * Envía un webhook POST a N8N al completar el registro de un nuevo usuario.
    * @param {Object} userData - Datos del usuario registrado (email, nombre, rol)

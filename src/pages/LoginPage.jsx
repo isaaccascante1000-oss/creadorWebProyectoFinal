@@ -1,10 +1,22 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { VisualStage } from '../components/VisualStage';
 import { AuthCard } from '../components/AuthCard';
 import { ToastNotification } from '../components/ToastNotification';
 import { AccessibilityToolbar } from '../components/AccessibilityToolbar';
+import { useAuth } from '../context/AuthContext';
 
 export const LoginPage = () => {
+  const navigate = useNavigate();
+  const { isAuthenticated, role } = useAuth();
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      const targetRoute = role === 'admin' ? '/admin' : '/canvas';
+      navigate(targetRoute, { replace: true });
+    }
+  }, [isAuthenticated, role, navigate]);
+
   const [toastState, setToastState] = useState({
     show: false,
     message: '',

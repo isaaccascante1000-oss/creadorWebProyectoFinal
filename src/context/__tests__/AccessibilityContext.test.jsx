@@ -37,7 +37,7 @@ describe('AccessibilityContext', () => {
       </AccessibilityProvider>
     );
 
-    expect(screen.getByTestId('theme-value').textContent).toBe('dark');
+    expect(screen.getByTestId('theme-value').textContent).toBe('midnight');
     expect(screen.getByTestId('font-value').textContent).toBe('normal');
   });
 
@@ -51,8 +51,8 @@ describe('AccessibilityContext', () => {
     const toggleBtn = screen.getByTestId('toggle-theme');
     fireEvent.click(toggleBtn);
 
-    expect(screen.getByTestId('theme-value').textContent).toBe('light');
-    expect(localStorage.getItem('canvasai_theme')).toBe('light');
+    expect(screen.getByTestId('theme-value').textContent).toBe('studio-light');
+    expect(localStorage.getItem('canvasai_theme')).toBe('studio-light');
   });
 
   it('debe incrementar y restablecer el tamaño de la fuente', () => {

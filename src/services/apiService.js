@@ -1,4 +1,4 @@
-const API_BASE_URL = 'http://localhost:3000';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
 
 // Estado local de respaldo cuando JSON Server no está corriendo
 let localUsers = [
@@ -94,6 +94,18 @@ export const apiService = {
     return [...localProjects];
   },
 
+  async getProjectsByOwner(ownerId) {
+    try {
+      const res = await fetch(`${API_BASE_URL}/projects?ownerId=${ownerId}`);
+      if (res.ok) {
+        return await res.json();
+      }
+    } catch (e) {
+      console.warn('JSON Server offline, buscando proyectos por owner en local');
+    }
+    return localProjects.filter(p => p.ownerId === ownerId);
+  },
+
   async createProject(projectData) {
     const newProject = {
       id: `p_${Date.now()}`,
@@ -132,6 +144,23 @@ export const apiService = {
     }
     localProjects = localProjects.map((p) => (p.id === id ? { ...p, ...projectData } : p));
     return { id, ...projectData };
+  },
+
+  async updateProjectStatus(id, status) {
+    try {
+      const res = await fetch(`${API_BASE_URL}/projects/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status }),
+      });
+      if (res.ok) {
+        return await res.json();
+      }
+    } catch (e) {
+      console.warn('JSON Server offline, actualizando estado del proyecto en memoria local');
+    }
+    localProjects = localProjects.map((p) => (p.id === id ? { ...p, status } : p));
+    return { id, status };
   },
 
   async deleteProject(id) {

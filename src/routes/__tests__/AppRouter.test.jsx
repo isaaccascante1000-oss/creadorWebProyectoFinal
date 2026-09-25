@@ -2,6 +2,7 @@ import React from 'react';
 import { render, screen } from '@testing-library/react';
 import { describe, it, expect, beforeEach } from 'vitest';
 import { AccessibilityProvider } from '../../context/AccessibilityContext';
+import { AuthProvider } from '../../context/AuthContext';
 import { AppRouter } from '../AppRouter';
 
 describe('AppRouter Navigation & Protection', () => {
@@ -9,14 +10,16 @@ describe('AppRouter Navigation & Protection', () => {
     localStorage.clear();
   });
 
-  it('debe renderizar la vista pública de Login en la ruta raíz /', () => {
+  it('debe renderizar la landing publica en la ruta raiz /', () => {
     render(
-      <AccessibilityProvider>
-        <AppRouter />
-      </AccessibilityProvider>
+      <AuthProvider>
+        <AccessibilityProvider>
+          <AppRouter />
+        </AccessibilityProvider>
+      </AuthProvider>
     );
 
-    expect(screen.getByRole('heading', { name: /CanvasAI/i })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: /Iniciar Sesión/i })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /Dale un lugar a tus mejores ideas/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Iniciar sesion/i })).toBeInTheDocument();
   });
 });

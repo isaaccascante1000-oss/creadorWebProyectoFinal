@@ -3,10 +3,77 @@
  */
 export const geminiService = {
   /**
+   * Genera código UI basado únicamente en un prompt de texto
+   */
+  async generateUIFromPrompt(promptText, canvasJSON = '{}') {
+    const apiKey = import.meta.env.VITE_GEMINI_API_KEY || '';
+    
+    if (!apiKey) {
+      return new Promise((resolve) => {
+        setTimeout(() => {
+          resolve({
+            success: true,
+            data: {
+              jsxCode: `<div className="p-6 bg-slate-800 text-white rounded-xl shadow-lg border border-indigo-500">\n  <h3 className="text-xl font-bold mb-2 text-indigo-400">Mock Component</h3>\n  <p className="text-sm text-slate-300">Generado para: ${promptText}</p>\n</div>`,
+              components: ['MockComponent']
+            },
+            error: null
+          });
+        }, 1200);
+      });
+    }
+
+    try {
+      const systemPrompt = `Eres un desarrollador Frontend experto.
+Tu única tarea es convertir la estructura JSON de objetos de Fabric.js provista en código React funcional con Tailwind CSS.
+RESPETA ESTRICTAMENTE la posición, tipos de elementos (rectángulos = contenedores/cards, texto = encabezados/párrafos, botones = botones interactivos) y textos definidos en el lienzo.
+NO inventes componentes adicionales que no estén reflejados o descritos en el prototipo canvas.
+Si hay un prompt de texto adicional, úsalo únicamente para afinar estilos de Tailwind o comportamiento, pero MANTIENE el layout dibujado intacto.
+Responde ÚNICAMENTE con el código, sin explicaciones.`;
+
+      const fullPrompt = `${systemPrompt}\n\nInstrucción del usuario: ${promptText}\n\nEstructura del Canvas JSON:\n${canvasJSON}`;
+
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=${apiKey}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: fullPrompt }] }]
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`API error: ${response.status} ${response.statusText}`);
+      }
+
+      const responseData = await response.json();
+      const generatedText = responseData.candidates?.[0]?.content?.parts?.[0]?.text;
+
+      if (!generatedText) {
+        throw new Error("Respuesta vacía o formato inválido de Gemini.");
+      }
+
+      return {
+        success: true,
+        data: {
+          jsxCode: this.cleanGeneratedCode(generatedText),
+          components: ['GeneratedUI']
+        },
+        error: null
+      };
+    } catch (error) {
+      return {
+        success: false,
+        data: null,
+        error: error.message || 'Error desconocido al invocar Gemini API'
+      };
+    }
+  },
+
+  /**
    * Genera código HTML/CSS/JSX basado en la captura del lienzo en Base64 y un prompt.
-   * @param {string} imageBase64 - Captura del lienzo en formato Base64 (PNG/JPEG)
-   * @param {string} promptText - Instrucción del usuario para la IA
-   * @param {string} apiKey - Clave API opcional de Gemini
    */
   async generateUIFromCanvas(imageBase64 = '', promptText = '', apiKey = import.meta.env.VITE_GEMINI_API_KEY || '') {
     const systemPrompt = `Eres un diseñador y desarrollador Frontend experto. Genera un componente de interfaz web limpio, moderno y responsivo usando HTML5 y Tailwind CSS basado en el siguiente prompt e imagen adjunta. Responde ÚNICAMENTE con el código HTML/Tailwind dentro de una estructura válida (o en un bloque de código).`;

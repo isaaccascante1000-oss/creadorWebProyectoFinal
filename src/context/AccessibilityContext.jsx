@@ -3,10 +3,10 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 const AccessibilityContext = createContext();
 
 export const AccessibilityProvider = ({ children }) => {
-  // Inicializa tema desde localStorage o por defecto 'dark'
+  // Inicializa tema desde localStorage o por defecto 'midnight'
   const [theme, setTheme] = useState(() => {
     const savedTheme = localStorage.getItem('canvasai_theme');
-    return savedTheme ? savedTheme : 'dark';
+    return savedTheme ? savedTheme : 'midnight';
   });
 
   // Inicializa nivel de fuente: 'normal' (100%), 'large' (115%), 'xlarge' (130%)
@@ -15,10 +15,15 @@ export const AccessibilityProvider = ({ children }) => {
     return savedFontSize ? savedFontSize : 'normal';
   });
 
-  // Efecto para actualizar la clase dark en el <html> y persistir en localStorage
+  // Efecto para aplicar tema en el document y persistir en localStorage
   useEffect(() => {
     localStorage.setItem('canvasai_theme', theme);
-    if (theme === 'dark') {
+    document.documentElement.setAttribute('data-theme', theme);
+    document.body.setAttribute('data-theme', theme);
+    
+    // Mantenemos dark para tailwind legacy en fondos oscuros
+    const darkThemes = ['midnight', 'cosmic-blue', 'cyberpunk', 'matrix', 'oled', 'dark'];
+    if (darkThemes.includes(theme)) {
       document.documentElement.classList.add('dark');
     } else {
       document.documentElement.classList.remove('dark');
@@ -35,8 +40,12 @@ export const AccessibilityProvider = ({ children }) => {
     document.documentElement.style.fontSize = scalePercentage;
   }, [fontSizeLevel]);
 
+  const changeTheme = (newTheme) => {
+    setTheme(newTheme);
+  };
+
   const toggleTheme = () => {
-    setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'));
+    setTheme((prev) => (prev === 'midnight' ? 'studio-light' : 'midnight'));
   };
 
   const increaseFontSize = () => {
@@ -64,6 +73,7 @@ export const AccessibilityProvider = ({ children }) => {
       value={{
         theme,
         setTheme,
+        changeTheme,
         toggleTheme,
         fontSizeLevel,
         increaseFontSize,

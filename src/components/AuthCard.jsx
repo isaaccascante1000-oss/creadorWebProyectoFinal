@@ -2,9 +2,11 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { authService } from '../services/authService';
 import { n8nService } from '../services/n8nService';
+import { useAuth } from '../context/AuthContext';
 
 export const AuthCard = ({ onShowToast }) => {
   const navigate = useNavigate();
+  const { login } = useAuth();
   const [currentTab, setCurrentTab] = useState('login');
   const [activeRole, setActiveRole] = useState('admin');
   const [showPassword, setShowPassword] = useState(false);
@@ -30,8 +32,13 @@ export const AuthCard = ({ onShowToast }) => {
 
     const result = await authService.login(formData.email, formData.password, activeRole);
 
+    if (result.success) {
+      // Guardar sesión en AuthContext global
+      login(result.user);
+    }
+
     // Si es una acción de registro, dispara el webhook N8N
-    if (currentTab === 'register') {
+    if (currentTab === 'register' && result.success) {
       await n8nService.sendUserRegistrationWebhook({
         email: formData.email,
         name: formData.fullName || result.user.name,
@@ -49,7 +56,7 @@ export const AuthCard = ({ onShowToast }) => {
           'verified_user'
         );
       }
-      const targetRoute = result.user.role === 'admin' ? '/dashboard' : '/copilot';
+      const targetRoute = result.user.role === 'admin' ? '/admin' : '/canvas';
       navigate(targetRoute);
     }, 600);
   };
@@ -59,8 +66,11 @@ export const AuthCard = ({ onShowToast }) => {
       onShowToast(`Conectando con credenciales seguras de ${provider}...`, 'cloud_sync');
     }
     const result = await authService.login(`${provider.toLowerCase()}@canvasai.fwd`, 'sso', activeRole);
+    if (result.success) {
+      login(result.user);
+    }
     setTimeout(() => {
-      const targetRoute = result.user.role === 'admin' ? '/dashboard' : '/copilot';
+      const targetRoute = result.user.role === 'admin' ? '/admin' : '/canvas';
       navigate(targetRoute);
     }, 600);
   };

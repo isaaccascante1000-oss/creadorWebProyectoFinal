@@ -104,3 +104,74 @@ code {
   padding: 4px 8px;
   background: var(--code-bg);
 }
+
+/* Definición de Variables por Tema */
+:root, [data-theme="midnight"] {
+  --app-bg: #0b0f19;
+  --card-bg: #111827;
+  --text-main: #f3f4f6;
+  --border-color: #1f2937;
+  --accent: #3b82f6;
+}
+
+[data-theme="ps-classic"] {
+  --app-bg: #d0d3d8;
+  --card-bg: #e2e5e9;
+  --text-main: #000000;
+  --border-color: #a0a5b0;
+  --accent: #00439c;
+}
+
+[data-theme="cosmic-blue"] {
+  --app-bg: #030712;
+  --card-bg: #0b1528;
+  --text-main: #e0f2fe;
+  --border-color: #1e3a8a;
+  --accent: #38bdf8;
+}
+
+[data-theme="cyberpunk"] {
+  --app-bg: #0d0221;
+  --card-bg: #190a38;
+  --text-main: #00f5d4;
+  --border-color: #ff007f;
+  --accent: #ff007f;
+}
+
+[data-theme="matrix"] {
+  --app-bg: #000800;
+  --card-bg: #001a00;
+  --text-main: #00ff41;
+  --border-color: #003b00;
+  --accent: #00ff41;
+}
+
+[data-theme="oled"] {
+  --app-bg: #000000;
+  --card-bg: #0a0a0a;
+  --text-main: #ffffff;
+  --border-color: #262626;
+  --accent: #ffffff;
+}
+
+[data-theme="studio-light"] {
+  --app-bg: #f8fafc;
+  --card-bg: #ffffff;
+  --text-main: #0f172a;
+  --border-color: #e2e8f0;
+  --accent: #2563eb;
+}
+
+/* Forzar la aplicación de colores sobre los elementos principales */
+body, #root {
+  background-color: var(--app-bg) !important;
+  color: var(--text-main) !important;
+  transition: background-color 0.25s ease, color 0.25s ease;
+}
+
+/* Forzar a que las tarjetas del dashboard y copilot usen el color del tema */
+.card-theme, main > div, .bg-slate-900, .bg-gray-900, .bg-gray-800, .border-gray-800, [class*="bg-"] {
+  background-color: var(--card-bg) !important;
+  color: var(--text-main) !important;
+  border-color: var(--border-color) !important;
+}

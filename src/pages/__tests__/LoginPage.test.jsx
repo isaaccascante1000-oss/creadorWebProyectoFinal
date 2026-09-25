@@ -3,15 +3,18 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import { describe, it, expect } from 'vitest';
 import { AccessibilityProvider } from '../../context/AccessibilityContext';
+import { AuthProvider } from '../../context/AuthContext';
 import { LoginPage } from '../LoginPage';
 
 const renderLoginPage = () => {
   return render(
-    <AccessibilityProvider>
-      <BrowserRouter>
-        <LoginPage />
-      </BrowserRouter>
-    </AccessibilityProvider>
+    <AuthProvider>
+      <AccessibilityProvider>
+        <BrowserRouter>
+          <LoginPage />
+        </BrowserRouter>
+      </AccessibilityProvider>
+    </AuthProvider>
   );
 };
 

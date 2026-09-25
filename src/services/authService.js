@@ -63,25 +63,21 @@ export const authService = {
    * Guarda la sesión en localStorage
    */
   setSession(user) {
-    localStorage.setItem('user', JSON.stringify(user));
-    localStorage.setItem('role', user.role);
-    localStorage.setItem('token', `fake-jwt-token-${user.id}-${Date.now()}`);
+    localStorage.setItem('canvasai_user', JSON.stringify(user));
   },
 
   /**
    * Cierra la sesión
    */
   logout() {
-    localStorage.removeItem('user');
-    localStorage.removeItem('role');
-    localStorage.removeItem('token');
+    localStorage.removeItem('canvasai_user');
   },
 
   /**
    * Obtiene el usuario actual
    */
   getCurrentUser() {
-    const userStr = localStorage.getItem('user');
+    const userStr = localStorage.getItem('canvasai_user');
     if (!userStr) return null;
     try {
       return JSON.parse(userStr);
@@ -94,7 +90,8 @@ export const authService = {
    * Obtiene el rol almacenado
    */
   getUserRole() {
-    return localStorage.getItem('role') || null;
+    const user = this.getCurrentUser();
+    return user ? user.role : null;
   },
 
   /**
