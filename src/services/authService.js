@@ -1,6 +1,6 @@
 const API_URL = 'http://localhost:3000';
 const AUTH_API_URL = import.meta.env.VITE_AUTH_API_URL || '';
-const AUTH_CALLBACK_URL = import.meta.env.VITE_AUTH_CALLBACK_URL || `${window.location.origin}/login`;
+const AUTH_APP_URL = import.meta.env.VITE_AUTH_APP_URL || `${window.location.origin}/login`;
 
 const DEFAULT_USERS = [
   {
@@ -82,7 +82,7 @@ export const authService = {
     sessionStorage.setItem('canvasai_oauth_provider', normalizedProvider);
 
     const authorizationUrl = new URL(`/oauth/${normalizedProvider}`, AUTH_API_URL);
-    authorizationUrl.searchParams.set('redirect_uri', AUTH_CALLBACK_URL);
+    authorizationUrl.searchParams.set('redirect_uri', AUTH_APP_URL);
     authorizationUrl.searchParams.set('state', state);
     window.location.assign(authorizationUrl.toString());
 
@@ -115,7 +115,7 @@ export const authService = {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ code, state, provider, redirectUri: AUTH_CALLBACK_URL }),
+        body: JSON.stringify({ code, state, provider, redirectUri: AUTH_APP_URL }),
       });
       const data = await response.json().catch(() => ({}));
 
