@@ -1,5 +1,3 @@
-Aquí tienes una propuesta completa y profesional para el archivo **`README.md`** de tu proyecto. Puedes copiar este código de Markdown y pegarlo directamente dentro de un archivo llamado `README.md` en la raíz de tu proyecto.
-
 ```markdown
 # 🎨 CreadorWebProyectoFinal - Aplicación de Diseños y Dibujos
 
