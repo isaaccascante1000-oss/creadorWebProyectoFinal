@@ -177,6 +177,18 @@ export const apiService = {
     localProjects = localProjects.filter((p) => p.id !== id);
     return true;
   },
+// ================= ENDPOINT EXTERNO REAL (Requisito 2.3) =================
+  async getExternalData() {
+    try {
+      const res = await fetch('https://jsonplaceholder.typicode.com/posts?_limit=3');
+      if (res.ok) {
+        return await res.json();
+      }
+    } catch (e) {
+      console.warn('Error consumiendo endpoint externo real');
+    }
+    return [];
+  },
 };
 
 export default apiService;

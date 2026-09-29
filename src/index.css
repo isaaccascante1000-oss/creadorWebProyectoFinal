@@ -1,23 +1,30 @@
 :root {
-  --text: #6b6375;
-  --text-h: #08060d;
-  --bg: #fff;
-  --border: #e5e4e7;
-  --code-bg: #f4f3ec;
-  --accent: #aa3bff;
-  --accent-bg: rgba(170, 59, 255, 0.1);
-  --accent-border: rgba(170, 59, 255, 0.5);
-  --social-bg: rgba(244, 243, 236, 0.5);
-  --shadow:
-    rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
+  /* Paleta Neutral Armonizada - Evita blancos puros deslumbrantes en fondos oscuros */
+  --white-soft: #f8fafc;
+  --white-heading: #f1f5f9;
+  --white-muted: #cbd5e1;
+  --white-subtle: #94a3b8;
+  --white-pure: #ffffff;
 
-  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --mono: ui-monospace, Consolas, monospace;
+  --text: #94a3b8;
+  --text-h: #f1f5f9;
+  --bg: #090d16;
+  --border: rgba(148, 163, 184, 0.16);
+  --code-bg: #111827;
+  --accent: #3b82f6;
+  --accent-bg: rgba(59, 130, 246, 0.12);
+  --accent-border: rgba(59, 130, 246, 0.4);
+  --social-bg: rgba(30, 41, 59, 0.7);
+  --shadow:
+    rgba(0, 0, 0, 0.25) 0 10px 15px -3px, rgba(0, 0, 0, 0.15) 0 4px 6px -2px;
+
+  --sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --heading: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --mono: 'JetBrains Mono', ui-monospace, Consolas, monospace;
 
   font: 18px/145% var(--sans);
   letter-spacing: 0.18px;
-  color-scheme: light dark;
+  color-scheme: dark light;
   color: var(--text);
   background: var(--bg);
   font-synthesis: none;
@@ -30,28 +37,10 @@
   }
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --text: #9ca3af;
-    --text-h: #f3f4f6;
-    --bg: #16171d;
-    --border: #2e303a;
-    --code-bg: #1f2028;
-    --accent: #c084fc;
-    --accent-bg: rgba(192, 132, 252, 0.15);
-    --accent-border: rgba(192, 132, 252, 0.5);
-    --social-bg: rgba(47, 48, 58, 0.5);
-    --shadow:
-      rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
-  }
-
-  #social .button-icon {
-    filter: invert(1) brightness(2);
-  }
-}
-
 body {
   margin: 0;
+  background-color: var(--bg-primary, #090d16);
+  color: var(--text-primary, #f1f5f9);
 }
 
 #root {
@@ -62,9 +51,11 @@ body {
 }
 
 h1,
-h2 {
+h2,
+h3,
+h4 {
   font-family: var(--heading);
-  font-weight: 500;
+  font-weight: 600;
   color: var(--text-h);
 }
 
@@ -105,73 +96,287 @@ code {
   background: var(--code-bg);
 }
 
-/* Definición de Variables por Tema */
+/* =========================================================
+   DEFINICIÓN DE TEMAS VISUALES CON TONALIDADES OPTIMIZADAS
+   - Balance de blancos para evitar deslumbramiento en modo oscuro
+   - Alto contraste en textos claros sobre fondos oscuros (WCAG AA/AAA)
+   - Contraste sólido en temas claros evitando fondos deslumbrantes
+   ========================================================= */
+
+/* 1. Midnight (Tema Principal Predeterminado) */
 :root, [data-theme="midnight"] {
-  --app-bg: #0b0f19;
+  --bg-primary: #090d16;
+  --bg-card: #111827;
+  --bg-secondary: #1e293b;
+  --text-primary: #f1f5f9;      /* Blanco suave (slate-100), evita deslumbramiento */
+  --text-secondary: #94a3b8;    /* Gris equilibrado (slate-400), ratio > 5.5:1 */
+  --border-color: rgba(148, 163, 184, 0.16);
+  --accent-color: #3b82f6;
+  --glow-color: rgba(59, 130, 246, 0.25);
+
+  --app-bg: #090d16;
   --card-bg: #111827;
-  --text-main: #f3f4f6;
-  --border-color: #1f2937;
+  --text-main: #f1f5f9;
   --accent: #3b82f6;
 }
 
-[data-theme="ps-classic"] {
-  --app-bg: #d0d3d8;
-  --card-bg: #e2e5e9;
-  --text-main: #000000;
-  --border-color: #a0a5b0;
-  --accent: #00439c;
-}
-
-[data-theme="cosmic-blue"] {
-  --app-bg: #030712;
-  --card-bg: #0b1528;
-  --text-main: #e0f2fe;
-  --border-color: #1e3a8a;
-  --accent: #38bdf8;
-}
-
-[data-theme="cyberpunk"] {
-  --app-bg: #0d0221;
-  --card-bg: #190a38;
-  --text-main: #00f5d4;
-  --border-color: #ff007f;
-  --accent: #ff007f;
-}
-
-[data-theme="matrix"] {
-  --app-bg: #000800;
-  --card-bg: #001a00;
-  --text-main: #00ff41;
-  --border-color: #003b00;
-  --accent: #00ff41;
-}
-
-[data-theme="oled"] {
-  --app-bg: #000000;
-  --card-bg: #0a0a0a;
-  --text-main: #ffffff;
-  --border-color: #262626;
-  --accent: #ffffff;
-}
-
+/* 2. Studio Light (Tema Claro para Trabajo Diurno) */
 [data-theme="studio-light"] {
+  --bg-primary: #f8fafc;        /* Off-white relajante para evitar fatiga ocular */
+  --bg-card: #ffffff;           /* Blanco puro exclusivo para tarjetas elevadas */
+  --bg-secondary: #f1f5f9;      /* Slate-100 para pills, chips e inputs */
+  --text-primary: #0f172a;      /* Slate-900 para máxima nitidez */
+  --text-secondary: #475569;    /* Slate-600 para texto secundario legible */
+  --border-color: #e2e8f0;
+  --accent-color: #2563eb;
+  --glow-color: rgba(37, 99, 235, 0.15);
+
   --app-bg: #f8fafc;
   --card-bg: #ffffff;
   --text-main: #0f172a;
-  --border-color: #e2e8f0;
   --accent: #2563eb;
 }
 
-/* Forzar la aplicación de colores sobre los elementos principales */
-body, #root {
-  background-color: var(--app-bg) !important;
-  color: var(--text-main) !important;
-  transition: background-color 0.25s ease, color 0.25s ease;
+/* 3. PS Classic (Gris Consola / Retro) */
+[data-theme="ps-classic"] {
+  --bg-primary: #d5d8de;
+  --bg-card: #e4e7ec;
+  --bg-secondary: #cbd0d8;
+  --text-primary: #111827;
+  --text-secondary: #374151;
+  --border-color: #9ea4b1;
+  --accent-color: #00439c;
+  --glow-color: rgba(0, 67, 156, 0.2);
+
+  --app-bg: #d5d8de;
+  --card-bg: #e4e7ec;
+  --text-main: #111827;
+  --accent: #00439c;
 }
 
-/* Forzar a que las tarjetas del dashboard y copilot usen el color del tema */
-.card-theme, main > div, .bg-slate-900, .bg-gray-900, .bg-gray-800, .border-gray-800, [class*="bg-"] {
-  background-color: var(--card-bg) !important;
-  color: var(--text-main) !important;
+/* 4. Cosmic Blue (Azul Profundo Nebular) */
+[data-theme="cosmic-blue"] {
+  --bg-primary: #030712;
+  --bg-card: #0b1528;
+  --bg-secondary: #112340;
+  --text-primary: #e0f2fe;      /* Blanco glaciar suave */
+  --text-secondary: #7dd3fc;
+  --border-color: rgba(56, 189, 248, 0.22);
+  --accent-color: #38bdf8;
+  --glow-color: rgba(56, 189, 248, 0.3);
+
+  --app-bg: #030712;
+  --card-bg: #0b1528;
+  --text-main: #e0f2fe;
+  --accent: #38bdf8;
+}
+
+/* 5. Cyberpunk (Neón Oscuro) */
+[data-theme="cyberpunk"] {
+  --bg-primary: #0d0221;
+  --bg-card: #190a38;
+  --bg-secondary: #280e54;
+  --text-primary: #fdf4ff;      /* Blanco perla con matiz rosa tenue */
+  --text-secondary: #00f5d4;
+  --border-color: rgba(255, 0, 127, 0.35);
+  --accent-color: #ff007f;
+  --glow-color: rgba(255, 0, 127, 0.3);
+
+  --app-bg: #0d0221;
+  --card-bg: #190a38;
+  --text-main: #00f5d4;
+  --accent: #ff007f;
+}
+
+/* 6. Matrix (Terminal Hacker) */
+[data-theme="matrix"] {
+  --bg-primary: #000800;
+  --bg-card: #001a00;
+  --bg-secondary: #002e00;
+  --text-primary: #eaffea;      /* Blanco con matiz verde sutil */
+  --text-secondary: #55ff77;
+  --border-color: rgba(0, 255, 65, 0.28);
+  --accent-color: #00ff41;
+  --glow-color: rgba(0, 255, 65, 0.25);
+
+  --app-bg: #000800;
+  --card-bg: #001a00;
+  --text-main: #00ff41;
+  --accent: #00ff41;
+}
+
+/* 7. OLED Black (Negro Puro con Blancos Zinc Agradables) */
+[data-theme="oled"] {
+  --bg-primary: #000000;
+  --bg-card: #0d0d0d;
+  --bg-secondary: #1a1a1a;
+  --text-primary: #f4f4f5;      /* Zinc-100 suave, previene halos en paneles OLED */
+  --text-secondary: #a1a1aa;    /* Zinc-400 */
+  --border-color: #262626;
+  --accent-color: #e4e4e7;
+  --glow-color: rgba(255, 255, 255, 0.15);
+
+  --app-bg: #000000;
+  --card-bg: #0d0d0d;
+  --text-main: #f4f4f5;
+  --accent: #e4e4e7;
+}
+
+/* Aplicación global y transiciones fluidas de tema */
+body, #root {
+  background-color: var(--bg-primary) !important;
+  color: var(--text-primary) !important;
+  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+
+/* Clases utilitarias de tarjetas para integración con temas */
+.card-theme {
+  background-color: var(--bg-card) !important;
+  color: var(--text-primary) !important;
   border-color: var(--border-color) !important;
 }
+
+/* Garantizar texto negro con máxima legibilidad sobre botones y pestañas primarias/neón */
+.bg-primary,
+button.bg-primary,
+.bg-primary *,
+button.bg-primary * {
+  color: #000000 !important;
+}
+
+.text-on-primary {
+  color: #000000 !important;
+}
+
+/* =========================================================================
+   REGLAS ESPECÍFICAS DE ALTO CONTRASTE PARA TEMAS CLAROS (Studio Light y PS Classic)
+   ========================================================================= */
+[data-theme="studio-light"],
+[data-theme="ps-classic"] {
+  --text-primary: #0f172a;
+  --text-secondary: #334155;
+  --text-outline: #475569;
+}
+
+/* 1. Header: Botones "Ir al Copilot" y "Cerrar Sesión" en temas claros */
+[data-theme="studio-light"] .btn-header-copilot,
+[data-theme="ps-classic"] .btn-header-copilot {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border: 1.5px solid #94a3b8 !important;
+  font-weight: 700 !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
+}
+[data-theme="studio-light"] .btn-header-copilot span,
+[data-theme="ps-classic"] .btn-header-copilot span {
+  color: #1e40af !important;
+}
+
+[data-theme="studio-light"] .btn-header-logout,
+[data-theme="ps-classic"] .btn-header-logout {
+  background-color: #e2e8f0 !important;
+  color: #000000 !important;
+  border: 1.5px solid #94a3b8 !important;
+  font-weight: 700 !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
+}
+[data-theme="studio-light"] .btn-header-logout:hover,
+[data-theme="ps-classic"] .btn-header-logout:hover {
+  background-color: #cbd5e1 !important;
+  color: #000000 !important;
+}
+
+/* 2. Tabla de Usuarios y Proyectos: Botones de Acción en temas claros */
+/* Botón "Editar": Azul oscuro nítido sobre fondo azul suave con borde definido */
+[data-theme="studio-light"] .btn-action-edit,
+[data-theme="ps-classic"] .btn-action-edit {
+  background-color: #dbeafe !important;
+  color: #1e3a8a !important;
+  border: 1px solid #60a5fa !important;
+  font-weight: 700 !important;
+}
+[data-theme="studio-light"] .btn-action-edit:hover,
+[data-theme="ps-classic"] .btn-action-edit:hover {
+  background-color: #bfdbfe !important;
+  color: #0f172a !important;
+}
+
+/* Botón "Eliminar": Blanco puro sobre fondo rojo sólido para máxima visibilidad */
+[data-theme="studio-light"] .btn-action-delete,
+[data-theme="ps-classic"] .btn-action-delete {
+  background-color: #dc2626 !important;
+  color: #ffffff !important;
+  border: 1px solid #b91c1c !important;
+  font-weight: 700 !important;
+  box-shadow: 0 1px 2px rgba(220, 38, 38, 0.25) !important;
+}
+[data-theme="studio-light"] .btn-action-delete:hover,
+[data-theme="ps-classic"] .btn-action-delete:hover {
+  background-color: #b91c1c !important;
+  color: #ffffff !important;
+}
+
+/* 3. Etiquetas de Rol (USER, ADMIN) y Estado en temas claros: Texto oscuro sobre su fondo */
+[data-theme="studio-light"] .badge-role-admin,
+[data-theme="ps-classic"] .badge-role-admin {
+  background-color: #e0e7ff !important;
+  color: #1e1b4b !important;
+  border: 1px solid #818cf8 !important;
+  font-weight: 800 !important;
+}
+
+[data-theme="studio-light"] .badge-role-user,
+[data-theme="ps-classic"] .badge-role-user {
+  background-color: #dcfce7 !important;
+  color: #064e3b !important;
+  border: 1px solid #4ade80 !important;
+  font-weight: 800 !important;
+}
+
+[data-theme="studio-light"] .badge-status,
+[data-theme="ps-classic"] .badge-status {
+  background-color: #dcfce7 !important;
+  color: #064e3b !important;
+  border: 1px solid #4ade80 !important;
+  font-weight: 800 !important;
+}
+
+/* 4. Tablas y encabezados con excelente contraste en temas claros */
+[data-theme="studio-light"] table thead th,
+[data-theme="ps-classic"] table thead th {
+  color: #334155 !important;
+  font-weight: 700 !important;
+  border-bottom: 2px solid #cbd5e1 !important;
+}
+
+[data-theme="studio-light"] table tbody td,
+[data-theme="ps-classic"] table tbody td {
+  color: #0f172a !important;
+}
+
+[data-theme="studio-light"] table tbody td.text-outline,
+[data-theme="ps-classic"] table tbody td.text-outline {
+  color: #475569 !important;
+}
+
+[data-theme="studio-light"] table tbody td.text-on-surface-variant,
+[data-theme="ps-classic"] table tbody td.text-on-surface-variant {
+  color: #1e293b !important;
+}
+
+[data-theme="studio-light"] table tr:hover,
+[data-theme="ps-classic"] table tr:hover {
+  background-color: rgba(0, 0, 0, 0.04) !important;
+}
+
+[data-theme="studio-light"] .text-outline,
+[data-theme="ps-classic"] .text-outline {
+  color: #475569 !important;
+}
+
+[data-theme="studio-light"] .text-tertiary,
+[data-theme="ps-classic"] .text-tertiary {
+  color: #047857 !important;
+}
+
+

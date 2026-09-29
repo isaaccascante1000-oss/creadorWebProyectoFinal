@@ -101,9 +101,9 @@ export const AuthCard = ({ onShowToast }) => {
           <button
             type="button"
             onClick={() => setCurrentTab('login')}
-            className={`w-1/2 py-2.5 rounded-lg font-body-sm text-body-sm font-semibold transition-all ${
+            className={`w-1/2 py-2.5 rounded-lg font-body-sm text-body-sm font-bold transition-all cursor-pointer ${
               currentTab === 'login'
-                ? 'bg-primary text-on-primary shadow'
+                ? 'bg-primary text-black shadow'
                 : 'text-on-surface-variant hover:text-on-surface'
             }`}
           >
@@ -112,9 +112,9 @@ export const AuthCard = ({ onShowToast }) => {
           <button
             type="button"
             onClick={() => setCurrentTab('register')}
-            className={`w-1/2 py-2.5 rounded-lg font-body-sm text-body-sm font-semibold transition-all ${
+            className={`w-1/2 py-2.5 rounded-lg font-body-sm text-body-sm font-bold transition-all cursor-pointer ${
               currentTab === 'register'
-                ? 'bg-primary text-on-primary shadow'
+                ? 'bg-primary text-black shadow'
                 : 'text-on-surface-variant hover:text-on-surface'
             }`}
           >
@@ -215,7 +215,7 @@ export const AuthCard = ({ onShowToast }) => {
                   <span className="material-symbols-outlined text-primary text-xl">admin_panel_settings</span>
                   {activeRole === 'admin' && (
                     <span className="w-3.5 h-3.5 rounded-full bg-primary flex items-center justify-center">
-                      <span className="material-symbols-outlined text-on-primary text-[10px] font-bold">check</span>
+                      <span className="material-symbols-outlined text-black text-[10px] font-bold">check</span>
                     </span>
                   )}
                 </div>
@@ -238,7 +238,7 @@ export const AuthCard = ({ onShowToast }) => {
                   <span className="material-symbols-outlined text-tertiary text-xl">code_blocks</span>
                   {activeRole === 'dev' && (
                     <span className="w-3.5 h-3.5 rounded-full bg-tertiary flex items-center justify-center">
-                      <span className="material-symbols-outlined text-on-tertiary text-[10px] font-bold">check</span>
+                      <span className="material-symbols-outlined text-black text-[10px] font-bold">check</span>
                     </span>
                   )}
                 </div>
@@ -255,10 +255,10 @@ export const AuthCard = ({ onShowToast }) => {
             <button
               type="submit"
               disabled={loading}
-              className="w-full h-12 rounded-lg bg-primary hover:bg-primary-fixed-dim text-on-primary font-body-md text-body-md font-semibold transition-all shadow-lg flex items-center justify-center gap-2 group cursor-pointer"
+              className="w-full h-12 rounded-lg bg-primary hover:opacity-90 text-black font-body-md text-body-md font-bold transition-all shadow-lg flex items-center justify-center gap-2 group cursor-pointer"
             >
               {loading && (
-                <span className="w-4 h-4 border-2 border-on-primary border-t-transparent rounded-full animate-spin"></span>
+                <span className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin"></span>
               )}
               <span>
                 {loading

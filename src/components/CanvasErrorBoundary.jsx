@@ -22,7 +22,7 @@ export class CanvasErrorBoundary extends Component {
           <span className="material-symbols-outlined text-3xl text-error">broken_image</span>
           <p className="text-sm font-semibold text-on-surface">No se pudo cargar el lienzo.</p>
           <p className="max-w-sm text-xs text-on-surface-variant">El resto del estudio sigue disponible. Puedes intentar cargar el lienzo de nuevo.</p>
-          <button type="button" onClick={this.handleReset} className="rounded-lg bg-primary px-4 py-2 text-xs font-semibold text-on-primary transition hover:opacity-90">
+          <button type="button" onClick={this.handleReset} className="rounded-lg bg-primary px-4 py-2 text-xs font-bold text-black transition hover:opacity-90 cursor-pointer shadow">
             Reintentar
           </button>
         </div>

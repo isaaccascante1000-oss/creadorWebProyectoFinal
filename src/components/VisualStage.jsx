@@ -11,7 +11,7 @@ export const VisualStage = () => {
       <div className="relative z-10 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center shadow-lg shadow-primary/20">
-            <span className="material-symbols-outlined text-on-primary text-2xl" style={{ fontVariationSettings: "'FILL' 1" }}>
+            <span className="material-symbols-outlined text-black font-bold text-2xl" style={{ fontVariationSettings: "'FILL' 1" }}>
               terminal
             </span>
           </div>

@@ -547,7 +547,7 @@ export const CanvasCopilotPage = () => {
         <div className="flex items-center gap-3">
           <Link to="/" className="flex items-center gap-2 hover:opacity-80 transition">
             <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center shadow">
-              <span className="material-symbols-outlined text-on-primary text-xl">terminal</span>
+              <span className="material-symbols-outlined text-black font-bold text-xl">terminal</span>
             </div>
             <span className="font-headline-sm text-lg font-bold">CanvasAI Studio</span>
           </Link>
@@ -558,7 +558,7 @@ export const CanvasCopilotPage = () => {
             role="tab"
             aria-selected={activeTab === 'canvas'}
             onClick={() => setActiveTab('canvas')}
-            className={`px-3 py-1 rounded-md text-xs font-semibold transition ${activeTab === 'canvas' ? 'bg-primary text-on-primary shadow' : 'text-on-surface-variant'}`}
+            className={`px-3 py-1 rounded-md text-xs font-bold transition cursor-pointer ${activeTab === 'canvas' ? 'bg-primary text-black shadow' : 'text-on-surface-variant hover:text-on-surface'}`}
           >
             Lienzo
           </button>
@@ -566,7 +566,7 @@ export const CanvasCopilotPage = () => {
             role="tab"
             aria-selected={activeTab === 'iframe'}
             onClick={() => setActiveTab('iframe')}
-            className={`px-3 py-1 rounded-md text-xs font-semibold transition ${activeTab === 'iframe' ? 'bg-primary text-on-primary shadow' : 'text-on-surface-variant'}`}
+            className={`px-3 py-1 rounded-md text-xs font-bold transition cursor-pointer ${activeTab === 'iframe' ? 'bg-primary text-black shadow' : 'text-on-surface-variant hover:text-on-surface'}`}
           >
             Iframe
           </button>
@@ -574,7 +574,7 @@ export const CanvasCopilotPage = () => {
             role="tab"
             aria-selected={activeTab === 'code'}
             onClick={() => setActiveTab('code')}
-            className={`px-3 py-1 rounded-md text-xs font-semibold transition ${activeTab === 'code' ? 'bg-primary text-on-primary shadow' : 'text-on-surface-variant'}`}
+            className={`px-3 py-1 rounded-md text-xs font-bold transition cursor-pointer ${activeTab === 'code' ? 'bg-primary text-black shadow' : 'text-on-surface-variant hover:text-on-surface'}`}
           >
             Código
           </button>
@@ -752,9 +752,10 @@ export const CanvasCopilotPage = () => {
                 <button
                   type="submit"
                   disabled={isGenerating}
-                  className="px-6 py-2 rounded-lg bg-primary text-on-primary font-semibold text-sm flex items-center gap-2 hover:opacity-90 transition disabled:opacity-50"
+                  className="px-6 py-2 rounded-lg bg-primary text-black font-bold text-sm flex items-center gap-2 hover:opacity-90 transition disabled:opacity-50 cursor-pointer shadow"
                 >
-                  {isGenerating ? 'Generando...' : 'Generar UI'} <span className="material-symbols-outlined text-[18px]">auto_awesome</span>
+                  <span className="text-black font-bold">{isGenerating ? 'Generando...' : 'Generar UI'}</span>
+                  <span className="material-symbols-outlined text-[18px] text-black font-bold">auto_awesome</span>
                 </button>
               </div>
             </form>

@@ -2,13 +2,13 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useAccessibility } from '../context/AccessibilityContext';
 
 const THEMES = [
-  { id: 'midnight', label: 'Midnight', icon: 'dark_mode', color: '#0F172A' },
-  { id: 'ps-classic', label: 'PS Classic', icon: 'stadia_controller', color: '#E6E6E6' },
-  { id: 'cosmic-blue', label: 'Cosmic Blue', icon: 'rocket_launch', color: '#04091A' },
-  { id: 'cyberpunk', label: 'Cyberpunk', icon: 'memory', color: '#0B0014' },
-  { id: 'matrix', label: 'Matrix', icon: 'terminal', color: '#000000' },
-  { id: 'oled', label: 'OLED Black', icon: 'contrast', color: '#000000' },
-  { id: 'studio-light', label: 'Studio Light', icon: 'light_mode', color: '#FFFFFF' },
+  { id: 'midnight', label: 'Midnight', icon: 'dark_mode', color: '#3B82F6', badge: 'Azul' },
+  { id: 'ps-classic', label: 'PS Classic', icon: 'stadia_controller', color: '#9EA4B1', badge: 'Gris' },
+  { id: 'cosmic-blue', label: 'Cosmic Blue', icon: 'rocket_launch', color: '#38BDF8', badge: 'Cian' },
+  { id: 'cyberpunk', label: 'Cyberpunk', icon: 'memory', color: '#FF007F', badge: 'Neón' },
+  { id: 'matrix', label: 'Matrix', icon: 'terminal', color: '#00FF41', badge: 'Verde' },
+  { id: 'oled', label: 'OLED Black', icon: 'contrast', color: '#E4E4E7', badge: 'Zinc' },
+  { id: 'studio-light', label: 'Studio Light', icon: 'light_mode', color: '#2563EB', badge: 'Claro' },
 ];
 
 export const AccessibilityToolbar = ({ className = '' }) => {
@@ -48,20 +48,39 @@ export const AccessibilityToolbar = ({ className = '' }) => {
           type="button"
           onClick={() => setIsThemeOpen(!isThemeOpen)}
           aria-label="Seleccionar tema"
-          title={`Tema actual: ${currentThemeObj.label}`}
-          className="px-2 py-1.5 rounded-lg text-on-surface hover:bg-surface-container-high transition flex items-center justify-center gap-1.5 cursor-pointer"
+          aria-expanded={isThemeOpen}
+          title={`Tema activo: ${currentThemeObj.label}`}
+          className="px-2.5 py-1.5 rounded-lg text-on-surface hover:bg-surface-container-high transition flex items-center justify-center gap-2 cursor-pointer border border-transparent hover:border-outline-variant/40"
         >
+          <span
+            className="w-2.5 h-2.5 rounded-full border border-outline-variant/80 shadow-sm"
+            style={{ backgroundColor: currentThemeObj.color }}
+          />
           <span className="material-symbols-outlined text-lg text-primary">
             {currentThemeObj.icon}
           </span>
-          <span className="text-xs font-semibold">{currentThemeObj.label}</span>
-          <span className="material-symbols-outlined text-sm transition-transform duration-200" style={{ transform: isThemeOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}>expand_more</span>
+          <span className="text-xs font-bold text-on-surface">{currentThemeObj.label}</span>
+          <span
+            className="material-symbols-outlined text-sm transition-transform duration-200"
+            style={{ transform: isThemeOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}
+          >
+            expand_more
+          </span>
         </button>
 
         {isThemeOpen && (
-          <div className="absolute top-full right-0 mt-2 w-48 bg-gray-900 border border-outline-variant/30 rounded-xl shadow-xl overflow-hidden z-[1000]" style={{ backgroundColor: 'var(--card-bg)' }}>
-            <div className="p-2 space-y-1">
-              {THEMES.map((t) => (
+          <div
+            className="absolute top-full right-0 mt-2 w-56 bg-slate-900 border border-outline-variant/40 rounded-xl shadow-2xl overflow-hidden z-[1000] p-1.5 space-y-1 animate-fade-in"
+            style={{ backgroundColor: 'var(--bg-card)' }}
+          >
+            <div className="px-2.5 py-1.5 text-[11px] font-bold text-on-surface-variant uppercase tracking-wider border-b border-outline-variant/20 mb-1 flex items-center justify-between">
+              <span>Tema Visual</span>
+              <span className="text-primary font-mono text-[10px]">Activo: {currentThemeObj.label}</span>
+            </div>
+
+            {THEMES.map((t) => {
+              const isSelected = theme === t.id;
+              return (
                 <button
                   key={t.id}
                   onClick={() => {
@@ -71,25 +90,35 @@ export const AccessibilityToolbar = ({ className = '' }) => {
                     changeTheme(t.id);
                     setIsThemeOpen(false);
                   }}
-                  className={`w-full flex items-center justify-between px-2 py-2 rounded-lg text-xs font-semibold transition cursor-pointer ${
-                    theme === t.id
-                      ? 'bg-primary/10 text-primary'
-                      : 'text-on-surface hover:bg-surface-container-high'
+                  className={`w-full flex items-center justify-between px-2.5 py-2 rounded-lg text-xs transition cursor-pointer ${
+                    isSelected
+                      ? 'bg-primary/20 text-on-surface font-bold ring-1 ring-primary/50'
+                      : 'text-on-surface hover:bg-surface-container-high font-medium'
                   }`}
                 >
-                  <div className="flex items-center gap-2">
-                    <span className="material-symbols-outlined text-base">
+                  <div className="flex items-center gap-2.5">
+                    <span
+                      className="w-3.5 h-3.5 rounded-full border border-outline-variant/60 shadow-inner shrink-0"
+                      style={{ backgroundColor: t.color }}
+                      title={`Paleta: ${t.badge}`}
+                    />
+                    <span className="material-symbols-outlined text-base text-primary shrink-0">
                       {t.icon}
                     </span>
-                    <span>{t.label}</span>
+                    <span className="text-on-surface">{t.label}</span>
                   </div>
-                  <div
-                    className="w-3 h-3 rounded-full border border-outline-variant/50"
-                    style={{ backgroundColor: t.color }}
-                  ></div>
+
+                  <div className="flex items-center gap-1.5">
+                    {isSelected && (
+                      <span className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] bg-primary text-black font-extrabold shadow-sm">
+                        <span className="material-symbols-outlined text-xs text-black font-bold">check</span>
+                        Activo
+                      </span>
+                    )}
+                  </div>
                 </button>
-              ))}
-            </div>
+              );
+            })}
           </div>
         )}
       </div>
@@ -116,7 +145,7 @@ export const AccessibilityToolbar = ({ className = '' }) => {
         title={`Tamaño actual: ${fontSizeLevel}`}
         className={`px-2 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
           fontSizeLevel === 'normal'
-            ? 'bg-primary text-on-primary shadow-sm'
+            ? 'bg-primary text-black font-bold shadow-sm'
             : 'text-on-surface hover:bg-surface-container-high'
         }`}
       >

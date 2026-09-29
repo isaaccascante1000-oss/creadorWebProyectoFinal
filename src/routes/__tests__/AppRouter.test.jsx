@@ -21,5 +21,21 @@ describe('AppRouter Navigation & Protection', () => {
 
     expect(screen.getByRole('heading', { name: /Dale un lugar a tus mejores ideas/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Iniciar sesion/i })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /A que nos dedicamos/i })).toBeInTheDocument();
+  });
+
+  it('debe renderizar la sección de términos y condiciones sin pantallas blancas', () => {
+    window.history.pushState({}, 'Terms', '/terms');
+    render(
+      <AuthProvider>
+        <AccessibilityProvider>
+          <AppRouter />
+        </AccessibilityProvider>
+      </AuthProvider>
+    );
+
+    expect(screen.getByText(/Términos, Condiciones y Privacidad/i)).toBeInTheDocument();
+    window.history.pushState({}, 'Home', '/');
   });
 });
+

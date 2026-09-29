@@ -162,7 +162,7 @@ export const AdminDashboardPage = () => {
         <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-outline-variant/30">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center shadow-lg">
-              <span className="material-symbols-outlined text-on-primary text-2xl">admin_panel_settings</span>
+              <span className="material-symbols-outlined text-black font-bold text-2xl">admin_panel_settings</span>
             </div>
             <div>
               <h1 className="font-headline-md text-2xl font-bold">Panel de Administración</h1>
@@ -175,14 +175,14 @@ export const AdminDashboardPage = () => {
             <AccessibilityToolbar />
             <Link
               to="/copilot"
-              className="px-4 py-2 rounded-lg bg-surface-container-high text-on-surface text-xs font-semibold hover:bg-surface-bright transition flex items-center gap-2 shadow"
+              className="btn-header-copilot px-4 py-2 rounded-lg bg-surface-container-high text-on-surface border border-outline-variant/40 text-xs font-bold hover:bg-surface-bright transition flex items-center gap-2 shadow-sm cursor-pointer"
             >
-              <span className="material-symbols-outlined text-base text-primary">auto_awesome</span>
-              Ir al Copilot
+              <span className="material-symbols-outlined text-base text-primary font-bold">auto_awesome</span>
+              <span>Ir al Copilot</span>
             </Link>
             <button
               onClick={handleLogout}
-              className="px-4 py-2 rounded-lg bg-primary text-on-primary text-xs font-semibold hover:bg-primary-fixed-dim transition cursor-pointer shadow"
+              className="btn-header-logout px-4 py-2 rounded-lg bg-primary text-black font-bold text-xs hover:opacity-90 transition cursor-pointer shadow-sm"
             >
               Cerrar Sesión
             </button>
@@ -310,16 +310,16 @@ export const AdminDashboardPage = () => {
         <div className="flex items-center gap-2 border-b border-outline-variant/30 pb-2">
           <button
             onClick={() => setActiveTab('users')}
-            className={`px-4 py-2 rounded-lg text-xs font-semibold transition ${
-              activeTab === 'users' ? 'bg-primary text-on-primary shadow' : 'text-on-surface-variant hover:text-on-surface'
+            className={`px-4 py-2 rounded-lg text-xs font-bold transition cursor-pointer ${
+              activeTab === 'users' ? 'bg-primary text-black shadow' : 'text-on-surface-variant hover:text-on-surface'
             }`}
           >
             Gestión de Usuarios ({users.length})
           </button>
           <button
             onClick={() => setActiveTab('projects')}
-            className={`px-4 py-2 rounded-lg text-xs font-semibold transition ${
-              activeTab === 'projects' ? 'bg-primary text-on-primary shadow' : 'text-on-surface-variant hover:text-on-surface'
+            className={`px-4 py-2 rounded-lg text-xs font-bold transition cursor-pointer ${
+              activeTab === 'projects' ? 'bg-primary text-black shadow' : 'text-on-surface-variant hover:text-on-surface'
             }`}
           >
             Gestión de Proyectos ({projects.length})
@@ -336,10 +336,10 @@ export const AdminDashboardPage = () => {
               </div>
               <button
                 onClick={() => handleOpenUserModal()}
-                className="px-3.5 py-2 rounded-lg bg-primary text-on-primary text-xs font-semibold flex items-center gap-1.5 shadow hover:opacity-90 transition cursor-pointer"
+                className="px-3.5 py-2 rounded-lg bg-primary text-black text-xs font-bold flex items-center gap-1.5 shadow hover:opacity-90 transition cursor-pointer"
               >
-                <span className="material-symbols-outlined text-base">person_add</span>
-                <span>Crear Usuario</span>
+                <span className="material-symbols-outlined text-base text-black font-bold">person_add</span>
+                <span className="text-black font-bold">Crear Usuario</span>
               </button>
             </div>
 
@@ -362,10 +362,10 @@ export const AdminDashboardPage = () => {
                       <td className="py-3 px-4 text-on-surface-variant">{u.email}</td>
                       <td className="py-3 px-4">
                         <span
-                          className={`px-2.5 py-0.5 rounded font-semibold text-[11px] ${
+                          className={`badge-role px-2.5 py-0.5 rounded font-bold text-[11px] ${
                             u.role === 'admin'
-                              ? 'bg-primary/20 text-primary border border-primary/30'
-                              : 'bg-tertiary/20 text-tertiary border border-tertiary/30'
+                              ? 'badge-role-admin bg-blue-500/20 text-blue-300 border border-blue-500/40'
+                              : 'badge-role-user bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
                           }`}
                         >
                           {u.role ? u.role.toUpperCase() : 'USER'}
@@ -374,13 +374,13 @@ export const AdminDashboardPage = () => {
                       <td className="py-3 px-4 text-right space-x-2">
                         <button
                           onClick={() => handleOpenUserModal(u)}
-                          className="px-2 py-1 rounded bg-surface-container-high hover:bg-surface-bright text-xs text-primary transition"
+                          className="btn-action-edit px-2.5 py-1 rounded text-xs font-bold transition cursor-pointer shadow-sm bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 border border-blue-500/40"
                         >
                           Editar
                         </button>
                         <button
                           onClick={() => handleDeleteUser(u.id)}
-                          className="px-2 py-1 rounded bg-error-container/30 hover:bg-error-container text-xs text-error transition"
+                          className="btn-action-delete px-2.5 py-1 rounded text-xs font-bold transition cursor-pointer shadow-sm bg-red-600 hover:bg-red-700 text-white border border-red-700"
                         >
                           Eliminar
                         </button>
@@ -403,10 +403,10 @@ export const AdminDashboardPage = () => {
               </div>
               <button
                 onClick={() => handleOpenProjectModal()}
-                className="px-3.5 py-2 rounded-lg bg-primary text-on-primary text-xs font-semibold flex items-center gap-1.5 shadow hover:opacity-90 transition cursor-pointer"
+                className="px-3.5 py-2 rounded-lg bg-primary text-black text-xs font-bold flex items-center gap-1.5 shadow hover:opacity-90 transition cursor-pointer"
               >
-                <span className="material-symbols-outlined text-base">add_box</span>
-                <span>Crear Proyecto</span>
+                <span className="material-symbols-outlined text-base text-black font-bold">add_box</span>
+                <span className="text-black font-bold">Crear Proyecto</span>
               </button>
             </div>
 
@@ -428,20 +428,20 @@ export const AdminDashboardPage = () => {
                       <td className="py-3 px-4 font-semibold text-on-surface">{p.name}</td>
                       <td className="py-3 px-4 text-on-surface-variant max-w-xs truncate">{p.description}</td>
                       <td className="py-3 px-4">
-                        <span className="px-2 py-0.5 rounded bg-tertiary-container/30 text-tertiary font-semibold text-[11px]">
+                        <span className="badge-status px-2.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-bold text-[11px] border border-emerald-500/40">
                           {p.status || 'activo'}
                         </span>
                       </td>
                       <td className="py-3 px-4 text-right space-x-2">
                         <button
                           onClick={() => handleOpenProjectModal(p)}
-                          className="px-2 py-1 rounded bg-surface-container-high hover:bg-surface-bright text-xs text-primary transition"
+                          className="btn-action-edit px-2.5 py-1 rounded text-xs font-bold transition cursor-pointer shadow-sm bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 border border-blue-500/40"
                         >
                           Editar
                         </button>
                         <button
                           onClick={() => handleDeleteProject(p.id)}
-                          className="px-2 py-1 rounded bg-error-container/30 hover:bg-error-container text-xs text-error transition"
+                          className="btn-action-delete px-2.5 py-1 rounded text-xs font-bold transition cursor-pointer shadow-sm bg-red-600 hover:bg-red-700 text-white border border-red-700"
                         >
                           Eliminar
                         </button>
@@ -503,7 +503,7 @@ export const AdminDashboardPage = () => {
                   </button>
                   <button
                     type="submit"
-                    className="px-4 py-2 rounded-lg bg-primary text-on-primary font-semibold hover:bg-primary-fixed-dim transition"
+                    className="px-4 py-2 rounded-lg bg-primary text-black font-bold hover:opacity-90 transition cursor-pointer"
                   >
                     Guardar
                   </button>
@@ -562,7 +562,7 @@ export const AdminDashboardPage = () => {
                   </button>
                   <button
                     type="submit"
-                    className="px-4 py-2 rounded-lg bg-primary text-on-primary font-semibold hover:bg-primary-fixed-dim transition"
+                    className="px-4 py-2 rounded-lg bg-primary text-black font-bold hover:opacity-90 transition cursor-pointer"
                   >
                     Guardar
                   </button>

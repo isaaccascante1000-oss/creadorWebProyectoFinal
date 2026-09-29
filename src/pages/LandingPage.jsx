@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 const services = [
   {
@@ -24,13 +24,28 @@ const services = [
 
 export const LandingPage = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [email, setEmail] = useState('');
   const [sent, setSent] = useState(false);
+
+  useEffect(() => {
+    const hash = location.hash || window.location.hash;
+    if (hash) {
+      const targetId = hash.replace('#', '');
+      const element = document.getElementById(targetId);
+      if (element) {
+        setTimeout(() => {
+          element.scrollIntoView({ behavior: 'smooth' });
+        }, 100);
+      }
+    }
+  }, [location]);
 
   const handleSubmit = (event) => {
     event.preventDefault();
     if (email.trim()) setSent(true);
   };
+
 
   return (
     <div className="landing-shell min-h-screen overflow-hidden">
@@ -43,7 +58,7 @@ export const LandingPage = () => {
         .landing-shell .landing-line { border-color: rgba(157, 202, 186, .18); }
         .landing-shell .landing-link { color: #b7c9c3; transition: color .2s ease; }
         .landing-shell .landing-link:hover { color: #c7ff75; }
-        .landing-shell .landing-button { background: #c7ff75; color: #071014; transition: transform .2s ease, box-shadow .2s ease; }
+        .landing-shell .landing-button { background: #c7ff75; color: #000000 !important; font-weight: 700 !important; transition: transform .2s ease, box-shadow .2s ease; }
         .landing-shell .landing-button:hover { transform: translateY(-2px); box-shadow: 0 12px 28px rgba(199, 255, 117, .2); }
         .landing-shell .landing-button:focus-visible, .landing-shell a:focus-visible, .landing-shell input:focus-visible { outline: 2px solid #c7ff75; outline-offset: 3px; }
         .landing-shell .landing-input { background: rgba(7, 16, 20, .7); border: 1px solid rgba(157, 202, 186, .28); color: #edf5f2; }
@@ -52,8 +67,8 @@ export const LandingPage = () => {
 
       <header className="relative z-10 mx-auto flex max-w-7xl items-center justify-between px-6 py-6 lg:px-10">
         <a href="#inicio" className="flex items-center gap-3" aria-label="CanvasAI, ir al inicio">
-          <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#c7ff75] text-[#071014]">
-            <span className="material-symbols-outlined">flare</span>
+          <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#c7ff75] text-black">
+            <span className="material-symbols-outlined text-black font-bold">flare</span>
           </span>
           <span className="text-lg font-bold tracking-tight">Canvas<span className="text-[#c7ff75]">AI</span></span>
         </a>
@@ -62,7 +77,7 @@ export const LandingPage = () => {
           <a className="landing-link" href="#nosotros">Sobre nosotros</a>
           <a className="landing-link" href="#contacto">Contacto</a>
         </nav>
-        <button type="button" onClick={() => navigate('/login')} className="landing-button rounded-lg px-4 py-2.5 text-sm font-bold">
+        <button type="button" onClick={() => navigate('/login')} className="landing-button rounded-lg px-4 py-2.5 text-sm font-bold text-black cursor-pointer">
           Iniciar sesion
         </button>
       </header>
@@ -76,7 +91,9 @@ export const LandingPage = () => {
             <h1 className="landing-display max-w-4xl text-5xl font-semibold leading-[.98] sm:text-7xl lg:text-8xl">Dale un lugar a tus <span className="text-[#c7ff75]">mejores ideas.</span></h1>
             <p className="mt-8 max-w-xl text-lg leading-8 text-[#b7c9c3]">CanvasAI une tu vision con herramientas inteligentes para crear, probar y llevar proyectos extraordinarios al mundo.</p>
             <div className="mt-10 flex flex-wrap items-center gap-5">
-              <button type="button" onClick={() => navigate('/login')} className="landing-button inline-flex items-center gap-2 rounded-lg px-6 py-3.5 font-bold">Comenzar ahora <span className="material-symbols-outlined text-lg">arrow_forward</span></button>
+              <button type="button" onClick={() => navigate('/login')} className="landing-button inline-flex items-center gap-2 rounded-lg px-6 py-3.5 font-bold text-black cursor-pointer">
+                Comenzar ahora <span className="material-symbols-outlined text-lg text-black font-bold">arrow_forward</span>
+              </button>
               <a href="#servicios" className="landing-link inline-flex items-center gap-2 text-sm font-semibold">Explorar el estudio <span className="material-symbols-outlined text-lg">south</span></a>
             </div>
           </div>
@@ -99,8 +116,45 @@ export const LandingPage = () => {
       </main>
 
       <footer id="contacto" className="border-t landing-line bg-[#050d10] px-6 py-14 lg:px-10">
-        <div className="mx-auto grid max-w-7xl gap-12 md:grid-cols-[1fr_auto] md:items-end"><div><p className="mb-3 text-xs font-bold uppercase tracking-[0.2em] text-[#c7ff75]">Hablemos</p><h2 className="landing-display max-w-md text-4xl font-semibold">Tu proxima gran idea empieza aqui.</h2><p className="mt-4 text-sm text-[#8ca59d]">Escribenos a hola@canvasai.studio</p></div><div className="w-full md:w-80"><form onSubmit={handleSubmit} className="flex border-b border-[#456057] pb-2"><label htmlFor="contact-email" className="sr-only">Tu correo electronico</label><input id="contact-email" type="email" required value={email} onChange={(event) => { setEmail(event.target.value); setSent(false); }} placeholder="Tu correo electronico" className="landing-input min-w-0 flex-1 border-0 bg-transparent px-0 py-2 text-sm focus:outline-none" /><button type="submit" className="text-sm font-bold text-[#c7ff75]">{sent ? 'Enviado' : 'Contactar'}</button></form><p className="mt-3 text-xs text-[#708982]">Tambien estamos en LinkedIn y X.</p></div></div>
-        <div className="mx-auto mt-16 flex max-w-7xl flex-col justify-between gap-3 border-t landing-line pt-5 text-xs text-[#708982] sm:flex-row"><span>© 2026 CanvasAI. Todos los derechos reservados.</span><span>Creado para quienes no se quedan en el primer borrador.</span></div>
+        <div className="mx-auto grid max-w-7xl gap-12 md:grid-cols-[1fr_auto] md:items-end">
+          <div>
+            <p className="mb-3 text-xs font-bold uppercase tracking-[0.2em] text-[#c7ff75]">Hablemos</p>
+            <h2 className="landing-display max-w-md text-4xl font-semibold text-[#f1f7f5]">Tu proxima gran idea empieza aqui.</h2>
+            <p className="mt-4 text-sm text-[#a1bcb3]">Escribenos a hola@canvasai.studio</p>
+          </div>
+          <div className="w-full md:w-80">
+            <form onSubmit={handleSubmit} className="flex border-b border-[#456057] pb-2">
+              <label htmlFor="contact-email" className="sr-only">Tu correo electronico</label>
+              <input
+                id="contact-email"
+                type="email"
+                required
+                value={email}
+                onChange={(event) => { setEmail(event.target.value); setSent(false); }}
+                placeholder="Tu correo electronico"
+                className="landing-input min-w-0 flex-1 border-0 bg-transparent px-0 py-2 text-sm focus:outline-none"
+              />
+              <button type="submit" className="text-sm font-bold text-[#c7ff75] hover:opacity-90 transition cursor-pointer">
+                {sent ? 'Enviado' : 'Contactar'}
+              </button>
+            </form>
+            <p className="mt-3 text-xs text-[#9fb8b1]">Tambien estamos en LinkedIn y X.</p>
+          </div>
+        </div>
+        <div className="mx-auto mt-16 flex max-w-7xl flex-col justify-between gap-3 border-t landing-line pt-5 text-xs text-[#9fb8b1] sm:flex-row sm:items-center">
+          <span>© 2026 CanvasAI. Todos los derechos reservados.</span>
+          <div className="flex items-center gap-4">
+            <button
+              type="button"
+              onClick={() => navigate('/terms')}
+              className="text-[#9fb8b1] hover:text-[#c7ff75] transition-colors underline-offset-4 hover:underline cursor-pointer"
+            >
+              Términos y Privacidad
+            </button>
+            <span className="text-[#456057]">•</span>
+            <span>Creado para quienes no se quedan en el primer borrador.</span>
+          </div>
+        </div>
       </footer>
     </div>
   );
