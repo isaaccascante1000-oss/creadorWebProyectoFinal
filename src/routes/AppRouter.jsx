@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import LandingPage from '../pages/LandingPage';
 import LoginPage from '../pages/LoginPage';
 import CanvasCopilotPage from '../pages/CanvasCopilotPage';
@@ -8,7 +8,7 @@ import ProtectedRoute from '../components/ProtectedRoute';
 
 export const AppRouter = () => {
   return (
-    <BrowserRouter>
+    <HashRouter>
       <Routes>
         {/* Rutas Públicas */}
         <Route path="/" element={<LandingPage />} />
@@ -31,7 +31,7 @@ export const AppRouter = () => {
         {/* Ruta comodín por defecto */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
-    </BrowserRouter>
+    </HashRouter>
   );
 };
 
