@@ -13,6 +13,20 @@
       "password": "123",
       "name": "Usuario Desarrollador FWD",
       "role": "user"
+    },
+    {
+      "id": "1790789350212",
+      "name": "as",
+      "email": "as@gmail.com",
+      "role": "user",
+      "password": "123"
+    },
+    {
+      "id": "1790789374253",
+      "name": "oz ",
+      "email": "oz@gmail.com",
+      "role": "admin",
+      "password": "123"
     }
   ],
   "projects": [
@@ -32,5 +46,6 @@
       "status": "en progreso",
       "ownerId": "2"
     }
-  ]
+  ],
+  "$schema": "./node_modules/json-server/schema.json"
 }

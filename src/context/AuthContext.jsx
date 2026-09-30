@@ -3,14 +3,43 @@ import { authService } from '../services/authService';
 
 const AuthContext = createContext();
 
+/**
+ * Intenta parsear el usuario guardado en localStorage de forma segura.
+ * Si el valor está corrupto, incompleto o no es un objeto válido con email/role,
+ * limpia el storage y retorna null para forzar el estado no-autenticado.
+ */
+const getSafeStoredUser = () => {
+  try {
+    const raw = localStorage.getItem('canvasai_user');
+    if (!raw) return null;
+
+    const parsed = JSON.parse(raw);
+
+    // Validar que sea un objeto con campos mínimos esperados
+    if (
+      !parsed ||
+      typeof parsed !== 'object' ||
+      Array.isArray(parsed) ||
+      !parsed.email
+    ) {
+      console.warn('[AuthContext] Datos de sesión inválidos en localStorage. Limpiando...');
+      localStorage.removeItem('canvasai_user');
+      return null;
+    }
+
+    return parsed;
+  } catch (err) {
+    console.warn('[AuthContext] Error al parsear sesión de localStorage. Limpiando...', err);
+    localStorage.removeItem('canvasai_user');
+    return null;
+  }
+};
+
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(() => {
-    const storedUser = localStorage.getItem('canvasai_user');
-    return storedUser ? JSON.parse(storedUser) : null;
-  });
+  const [user, setUser] = useState(getSafeStoredUser);
 
   const isAuthenticated = !!user;
-  const role = user ? user.role : null;
+  const role = user?.role ?? null;
 
   const login = (userData) => {
     setUser(userData);

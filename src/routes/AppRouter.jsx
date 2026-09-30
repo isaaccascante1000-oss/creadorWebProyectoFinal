@@ -1,3 +1,4 @@
+import React from 'react';
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import LandingPage from '../pages/LandingPage';
 import LoginPage from '../pages/LoginPage';
@@ -17,13 +18,13 @@ export const AppRouter = () => {
         <Route path="/terms" element={<TermsPage />} />
 
         {/* Rutas Privadas solo para Administrador */}
-        <Route element={<ProtectedRoute allowedRoles={['admin', 'Administrador']} />}>
+        <Route element={<ProtectedRoute allowedRoles={['admin', 'Administrador', 'ADMIN']} />}>
           <Route path="/dashboard" element={<AdminDashboardPage />} />
           <Route path="/admin" element={<AdminDashboardPage />} />
         </Route>
 
         {/* Rutas Privadas para usuarios autenticados */}
-        <Route element={<ProtectedRoute allowedRoles={['admin', 'user', 'dev', 'Administrador', 'Desarrollador']} />}>
+        <Route element={<ProtectedRoute allowedRoles={['admin', 'user', 'dev', 'Administrador', 'Desarrollador', 'ADMIN', 'DEV', 'USER']} />}>
           <Route path="/copilot" element={<CanvasCopilotPage />} />
           <Route path="/canvas" element={<CanvasCopilotPage />} />
         </Route>
@@ -35,4 +36,4 @@ export const AppRouter = () => {
   );
 };
 
-export default AppRouter;
+export default AppRouter;

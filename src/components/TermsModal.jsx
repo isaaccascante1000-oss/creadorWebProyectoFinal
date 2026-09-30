@@ -1,14 +1,37 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 
 export const TermsModal = ({ isOpen, onClose }) => {
+  // Bloquear el scroll del body y permitir cerrar con la tecla Escape
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape' && isOpen) {
+        onClose();
+      }
+    };
+
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+      window.addEventListener('keydown', handleKeyDown);
+    }
+
+    return () => {
+      document.body.style.overflow = 'unset';
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md p-4 transition-opacity">
+    <div 
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md p-4 transition-opacity animate-fade-in"
+      onClick={onClose}
+    >
       <div 
         role="dialog"
         aria-modal="true"
         aria-labelledby="modal-terms-title"
+        onClick={(e) => e.stopPropagation()}
         className="bg-slate-900 border border-slate-700/80 rounded-2xl max-w-2xl w-full max-h-[85vh] flex flex-col shadow-2xl text-slate-200 overflow-hidden"
       >
         {/* Modal Header */}
