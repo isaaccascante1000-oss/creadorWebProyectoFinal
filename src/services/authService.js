@@ -50,6 +50,9 @@ export const authService = {
     sessionStorage.removeItem('canvasai_oauth_provider');
 
     if (error) {
+      if (provider === 'github' && !['access_denied', 'oauth_cancelled'].includes(error)) {
+        return { success: false, error: 'No se pudo completar la autenticación.' };
+      }
       return { success: false, error: 'La autenticación fue cancelada o rechazada.' };
     }
     if (!code || !state || !expectedState || state !== expectedState || !provider) {

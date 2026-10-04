@@ -1,3 +1,5 @@
+import { getErrorMessage } from '../utils/errorMessage';
+
 const API_URL = import.meta.env.VITE_AUTH_API_URL || `${window.location.protocol}//${window.location.hostname}:3001`;
 
 const requestGeneration = async ({ prompt, canvas = '', image }) => {
@@ -10,12 +12,12 @@ const requestGeneration = async ({ prompt, canvas = '', image }) => {
       signal: AbortSignal.timeout(45_000),
     });
     const data = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(data.error || `Gemini rechazó la solicitud (${response.status}).`);
+    if (!response.ok) throw new Error(getErrorMessage(data, `Gemini rechazó la solicitud (${response.status}).`));
     const generatedText = data.candidates?.[0]?.content?.parts?.[0]?.text;
     if (!generatedText) throw new Error('Gemini devolvió una respuesta vacía.');
     return { success: true, data: { jsxCode: cleanGeneratedCode(generatedText) }, error: null };
   } catch (error) {
-    return { success: false, data: null, error: error.message || 'No se pudo generar la interfaz.' };
+    return { success: false, data: null, error: getErrorMessage(error, 'No se pudo generar la interfaz.') };
   }
 };
 

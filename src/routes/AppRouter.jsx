@@ -1,4 +1,4 @@
-import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { HashRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import LandingPage from '../pages/LandingPage';
 import LoginPage from '../pages/LoginPage';
 import CanvasCopilotPage from '../pages/CanvasCopilotPage';
@@ -7,9 +7,11 @@ import TermsPage from '../pages/TermsPage';
 import ProtectedRoute, { PublicOnlyRoute } from '../components/ProtectedRoute';
 
 const OAuthCallbackRedirect = () => {
-  const params = new URLSearchParams(window.location.search);
+  const location = useLocation();
+  const callbackSearch = location.search || window.location.search;
+  const params = new URLSearchParams(callbackSearch);
   if (params.has('code') || params.has('error')) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to={{ pathname: '/login', search: callbackSearch }} replace />;
   }
   return (
     <PublicOnlyRoute>

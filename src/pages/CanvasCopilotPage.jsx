@@ -1,21 +1,20 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { Canvas, Rect, Circle, IText, Group, Shadow } from 'fabric';
-import { mistralService } from '../services/mistralService';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Canvas, Rect, Circle, IText, Group } from 'fabric';
+import { geminiService } from '../services/geminiService';
 import { n8nService } from '../services/n8nService';
 import { AccessibilityToolbar } from '../components/AccessibilityToolbar';
 import { ToastNotification } from '../components/ToastNotification';
 import { CanvasErrorBoundary } from '../components/CanvasErrorBoundary';
 import { useSelection } from '../context/useSelection';
 import { useAuth } from '../context/AuthContext';
-
-const SHADOW_PRESETS = {
-  soft: { offsetX: 0, offsetY: 2, blur: 8, css: 'rgba(0,0,0,0.24) 0px 2px 8px' },
-  strong: { offsetX: 0, offsetY: 8, blur: 20, css: 'rgba(0,0,0,0.4) 0px 8px 20px' },
-};
+import { serializeCanvasForAI } from '../utils/canvasSerialization';
+import { getErrorMessage } from '../utils/errorMessage';
+import { removeOAuthQueryParams } from '../utils/oauthUrl';
 
 export const CanvasCopilotPage = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [activeTab, setActiveTab] = useState('canvas');
   const [promptText, setPromptText] = useState('Crear un componente de tarjeta de perfil con avatar, insignia de verificado y botón de seguir en modo oscuro.');
   const [isGenerating, setIsGenerating] = useState(false);
@@ -27,54 +26,54 @@ export const CanvasCopilotPage = () => {
 
   const [toastState, setToastState] = useState({ show: false, message: '', icon: 'info' });
   const showToast = (message, icon = 'info') => {
-    setToastState({ show: true, message, icon });
+    setToastState({ show: true, message: getErrorMessage(message, 'Ocurrió un error inesperado.'), icon });
     setTimeout(() => setToastState((prev) => ({ ...prev, show: false })), 4000);
   };
 
-  // Procesador avanzado para limpiar alucinaciones y texto conversacional del LLM
+  useEffect(() => {
+    const browserSearch = removeOAuthQueryParams(window.location.search);
+    if (browserSearch.changed) {
+      const query = browserSearch.search ? `?${browserSearch.search}` : '';
+      window.history.replaceState({}, document.title, `${window.location.pathname}${query}${window.location.hash}`);
+    }
+
+    const routerSearch = removeOAuthQueryParams(location.search);
+    if (routerSearch.changed) {
+      navigate({
+        pathname: location.pathname,
+        search: routerSearch.search ? `?${routerSearch.search}` : '',
+        hash: location.hash,
+      }, { replace: true });
+    }
+  }, [location.hash, location.pathname, location.search, navigate]);
+
   const extractPureCode = (rawText) => {
     if (!rawText) return '';
-    let textToProcess = rawText;
-
+    let textToProcess = String(rawText).trim();
+    const fencedCode = textToProcess.match(/^```(?:html|jsx|tsx|javascript)?\s*([\s\S]*?)\s*```$/i);
+    if (fencedCode) textToProcess = fencedCode[1].trim();
     try {
-      const parsed = JSON.parse(rawText);
-      // Extraer de múltiples posibles estructuras de respuesta del Webhook de n8n
-      textToProcess = parsed.output || parsed.text || parsed.code || parsed.jsxCode || parsed;
-      if (typeof textToProcess !== 'string') {
-          textToProcess = JSON.stringify(textToProcess);
+      const parsed = JSON.parse(textToProcess);
+      const code = parsed.output || parsed.text || parsed.code || parsed.html || parsed.jsxCode;
+      if (typeof code === 'string') {
+        return extractPureCode(code);
       }
     } catch {
-      // Si no es JSON, asumir que es texto plano directamente desde el LLM
+      return textToProcess;
     }
-
-    // 1. Intentar extraer de bloques Markdown de código
-    const jsxMatch = textToProcess.match(/```(?:jsx|html|javascript|tsx)?\s*([\s\S]*?)```/i);
-    if (jsxMatch && jsxMatch[1]) {
-      return jsxMatch[1].trim();
-    }
-
-    // 2. Fallback: Extraer desde la primera etiqueta de apertura hasta la última de cierre
-    const firstTag = textToProcess.indexOf('<');
-    const lastTag = textToProcess.lastIndexOf('>');
-    if (firstTag !== -1 && lastTag !== -1 && lastTag > firstTag) {
-      return textToProcess.substring(firstTag, lastTag + 1).trim();
-    }
-
-    return textToProcess.trim();
+    return textToProcess;
   };
 
   const sanitizeJsxForIframe = (codeString) => {
     if (!codeString) return '';
-    return codeString
-      .replace(/import\s+.*?;/g, '')
-      .replace(/export\s+default\s+.*?;?/g, '')
-      .replace(/const\s+\w+\s*=\s*\(\)\s*=>\s*\{/g, '')
-      .replace(/function\s+\w+\s*\(\)\s*\{/g, '')
-      .replace(/return\s*\(/g, '')
-      .replace(/\);\s*\}\s*$/g, '')
-      .replace(/className=/g, 'class=')
-      .replace(/\{(\/\*.*?\*\/)\}/g, '');
+    return codeString.replace(/\bclassName=/g, 'class=');
   };
+
+  const formatGeneratedCode = () => (
+    codeViewMode === 'html'
+      ? sanitizeJsxForIframe(generatedCode)
+      : generatedCode.replace(/\bclass=/g, 'className=').trim()
+  );
 
   const canvasRef = useRef(null);
   const canvasStageRef = useRef(null);
@@ -141,7 +140,7 @@ export const CanvasCopilotPage = () => {
           backgroundColor: '#0f172a',
           selection: true,
         });
-      } catch (err) {
+      } catch {
         return;
       }
 
@@ -153,7 +152,7 @@ export const CanvasCopilotPage = () => {
       try {
         fabricCanvasRef.current = initCanvas;
         attachCanvasBehavior(initCanvas, container, canvasStageRef.current);
-      } catch (error) {
+      } catch {
         fabricCanvasRef.current = null;
         queueCanvasDispose(initCanvas);
       }
@@ -205,6 +204,7 @@ export const CanvasCopilotPage = () => {
       initCanvas.on('object:modified', handleSelection);
       initCanvas.on('object:scaling', handleSelection);
       initCanvas.on('object:moving', handleSelection);
+      initCanvas.on('text:changed', handleSelection);
       initCanvas.on('mouse:dblclick', ({ target }) => {
         if (target && ['i-text', 'textbox', 'text'].includes(target.type)) {
           initCanvas.setActiveObject(target);
@@ -294,7 +294,7 @@ export const CanvasCopilotPage = () => {
       ];
     }
 
-    const fabricGroup = new Group(groupObjects, { left: 50, top: 50 });
+    const fabricGroup = new Group(groupObjects, { left: 50, top: 50, canvasaiTemplate: type });
     activeCanvas.add(fabricGroup);
     activeCanvas.setActiveObject(fabricGroup);
     activeCanvas.renderAll();
@@ -368,6 +368,7 @@ export const CanvasCopilotPage = () => {
   const clearCanvas = () => {
     const activeCanvas = canvas || fabricCanvasRef.current;
     if (!activeCanvas) return;
+    if (!window.confirm('¿Quieres limpiar todos los elementos del lienzo?')) return;
     activeCanvas.clear();
     activeCanvas.set('backgroundColor', '#0f172a');
     activeCanvas.renderAll();
@@ -399,47 +400,40 @@ export const CanvasCopilotPage = () => {
     return selectedObject[prop] ?? defaultVal;
   };
 
-  const isTextSelection = ['textbox', 'i-text', 'text'].includes(selectedObject?.type);
-  const shadowValue = getProp('shadow', null);
-  const shadowPreset = (() => {
-    if (!shadowValue) return 'none';
-    const { offsetX, offsetY, blur } = shadowValue;
-    if (offsetX === SHADOW_PRESETS.soft.offsetX && offsetY === SHADOW_PRESETS.soft.offsetY && blur === SHADOW_PRESETS.soft.blur) return 'soft';
-    if (offsetX === SHADOW_PRESETS.strong.offsetX && offsetY === SHADOW_PRESETS.strong.offsetY && blur === SHADOW_PRESETS.strong.blur) return 'strong';
-    return 'custom';
-  })();
-
-  const updateShadow = (value) => {
-    if (value === 'none') {
-      updateProp('shadow', null);
-      return;
-    }
-    if (value === 'custom') return;
-    updateProp('shadow', new Shadow(SHADOW_PRESETS[value].css));
+  const getColorProp = (prop, defaultVal) => {
+    const value = getProp(prop, defaultVal);
+    return typeof value === 'string' && /^#[\da-f]{6}$/i.test(value) ? value : defaultVal;
   };
 
+  const isTextSelection = ['textbox', 'i-text', 'text'].includes(selectedObject?.type);
   const handleExportProjectToN8N = async () => {
     const activeCanvas = canvas || fabricCanvasRef.current;
+    const canvasData = serializeCanvasForAI(activeCanvas);
     setIsExportingN8N(true);
-    setN8nStatusMsg('Enviando...');
+    setN8nStatusMsg('Cargando...');
     try {
-      const result = await n8nService.triggerWorkflow({
-        action: 'EXPORT_PROJECT',
+      const result = await n8nService.sendProjectExportWebhook({
+        id: `canvasai-${currentUser?.id || 'project'}-${Date.now()}`,
         title: promptText || 'Proyecto CanvasAI',
         prompt: promptText,
         code: generatedCode,
-        canvasJson: activeCanvas ? activeCanvas.toJSON() : {},
-        user: currentUser,
+        canvasData,
+        metadata: {
+          canvasWidth: canvasData.canvas.width,
+          canvasHeight: canvasData.canvas.height,
+          objectCount: canvasData.objects.length,
+          exportedAt: new Date().toISOString(),
+        },
       });
       if (result.success) {
-        showToast('Enviado a n8n exitosamente', 'check_circle');
+        showToast('Proyecto exportado a n8n exitosamente.', 'check_circle');
         setN8nStatusMsg('¡Enviado a n8n!');
       } else {
-        showToast('Error al exportar a n8n', 'error');
+        showToast(getErrorMessage(result.error, 'No se pudo exportar el proyecto a n8n.'), 'error');
         setN8nStatusMsg('Error en n8n');
       }
-    } catch {
-      showToast('Error de red al conectar con n8n', 'error');
+    } catch (error) {
+      showToast(getErrorMessage(error, 'Error de red al conectar con n8n.'), 'error');
       setN8nStatusMsg('Error de red');
     } finally {
       setIsExportingN8N(false);
@@ -447,7 +441,6 @@ export const CanvasCopilotPage = () => {
     }
   };
 
-  // Petición mejorada con directrices estructurales para el Webhook de N8N
   const handleGenerateUI = async (e) => {
     e?.preventDefault();
     const activeCanvas = canvas || fabricCanvasRef.current;
@@ -458,65 +451,46 @@ export const CanvasCopilotPage = () => {
     }
 
     setIsGenerating(true);
-    showToast('Generando UI con N8N...', 'auto_awesome');
+    showToast('Generando la interfaz con Gemini...', 'auto_awesome');
 
     try {
-      const hasCanvasObjects = Boolean(activeCanvas && activeCanvas.getObjects().length > 0);
-      const canvasJSON = hasCanvasObjects ? activeCanvas.toJSON() : {};
+      const canvasData = serializeCanvasForAI(activeCanvas);
+      const result = await geminiService.generateUIFromPrompt(
+        `${promptText}\n\nDevuelve únicamente HTML válido y bien formateado, con clases Tailwind CSS. No incluyas JavaScript, scripts ni explicaciones.`,
+        JSON.stringify(canvasData),
+      );
 
-      // Estructura de payload optimizada para darle contexto estricto al LLM en N8N
-      const payload = {
-        action: 'GENERATE_UI',
-        context: 'Actúa como un desarrollador experto Frontend. Genera código HTML/JSX utilizando TailwindCSS. Responde ÚNICAMENTE con el bloque de código, sin saludos ni explicaciones.',
-        prompt: promptText,
-        canvasData: {
-            objects: canvasJSON.objects || [],
-            background: canvasJSON.background || '#0f172a',
-        },
-        user: currentUser,
-      };
-
-      let result = await n8nService.triggerWorkflow(payload);
-      let pureCode = '';
-
-      if (result.success && result.data) {
-        const rawCode = typeof result.data === 'string' ? result.data : JSON.stringify(result.data);
-        pureCode = extractPureCode(rawCode);
+      if (!result.success) {
+        showToast(getErrorMessage(result.error, 'No se pudo generar la interfaz con Gemini.'), 'error');
+        return;
       }
 
-      if (!pureCode) {
-        showToast('N8n no devolvió código válido, conectando con Mistral AI...', 'sync');
-        result = await mistralService.generateUIFromPrompt(promptText, JSON.stringify(canvasJSON));
-        if (result.success && result.data) {
-          const rawCode = typeof result.data.jsxCode === 'string' ? result.data.jsxCode : JSON.stringify(result.data.jsxCode);
-          pureCode = extractPureCode(rawCode);
-        }
+      const markup = extractPureCode(result.data?.jsxCode);
+      if (!markup || !/<[a-z][\w:-]*(?:\s|>|\/)/i.test(markup)) {
+        showToast('Gemini no devolvió markup HTML válido. Ajusta el prompt e inténtalo de nuevo.', 'error');
+        return;
       }
 
-      if (pureCode) {
-        setGeneratedCode(pureCode);
-        setActiveTab('iframe');
-        showToast('UI Generada con éxito', 'verified');
-      } else {
-        showToast(result.error || 'No se pudo parsear el código a partir de la respuesta.', 'error');
-      }
-    } catch {
-      showToast('Error inesperado al conectar con el motor de IA', 'error');
+      setGeneratedCode(markup);
+      setActiveTab('iframe');
+      showToast('Interfaz generada con Gemini.', 'verified');
+    } catch (error) {
+      showToast(getErrorMessage(error, 'Error inesperado al conectar con Gemini.'), 'error');
     } finally {
       setIsGenerating(false);
     }
   };
 
-  const copyToClipboard = () => {
-    const textToCopy = codeViewMode === 'html' ? sanitizeJsxForIframe(generatedCode) : generatedCode;
-    navigator.clipboard
-      .writeText(textToCopy)
-      .then(() => {
-        setIsCopied(true);
-        setTimeout(() => setIsCopied(false), 2000);
-        showToast('¡Código copiado al portapapeles!', 'content_copy');
-      })
-      .catch(() => showToast('Error al copiar el código', 'error'));
+  const copyToClipboard = async () => {
+    try {
+      if (!navigator.clipboard?.writeText) throw new Error('El portapapeles no está disponible.');
+      await navigator.clipboard.writeText(formatGeneratedCode());
+      setIsCopied(true);
+      setTimeout(() => setIsCopied(false), 2000);
+      showToast('¡Código copiado al portapapeles!', 'content_copy');
+    } catch {
+      showToast('No se pudo copiar el código. Comprueba los permisos del navegador.', 'error');
+    }
   };
 
   const iframeDocument = `
@@ -524,7 +498,7 @@ export const CanvasCopilotPage = () => {
 <html class="dark">
 <head>
   <meta charset="utf-8"/>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src https://cdn.tailwindcss.com; style-src 'unsafe-inline'; img-src data: blob:; connect-src 'none'; form-action 'none'; base-uri 'none'; frame-ancestors 'none'"/>
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src https://cdn.tailwindcss.com; style-src 'unsafe-inline'; img-src data: blob:; font-src data:; connect-src 'none'; object-src 'none'; frame-src 'none'; form-action 'none'; base-uri 'none'"/>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     body { background-color: #0b1326; color: #dae2fd; padding: 1.5rem; }
@@ -563,8 +537,8 @@ export const CanvasCopilotPage = () => {
         <div className="flex items-center gap-3">
           <AccessibilityToolbar />
           <div className="flex items-center gap-2">
-            <button onClick={handleExportProjectToN8N} disabled={isExportingN8N} className="px-3 py-1 rounded-md bg-secondary-container/30 border border-secondary/40 text-secondary text-xs font-semibold flex items-center gap-1.5 cursor-pointer hover:bg-secondary-container/50 transition disabled:opacity-60">
-              <span className="material-symbols-outlined text-base">hub</span> {isExportingN8N ? 'Enviando...' : 'Exportar N8N'}
+            <button onClick={handleExportProjectToN8N} disabled={isExportingN8N} aria-busy={isExportingN8N} className="px-3 py-1 rounded-md bg-secondary-container/30 border border-secondary/40 text-secondary text-xs font-semibold flex items-center gap-1.5 cursor-pointer hover:bg-secondary-container/50 transition disabled:opacity-60">
+              <span className="material-symbols-outlined text-base">hub</span> {isExportingN8N ? 'Cargando...' : 'Exportar N8N'}
             </button>
             {n8nStatusMsg && <span className="text-[10px] text-outline">{n8nStatusMsg}</span>}
           </div>
@@ -632,6 +606,17 @@ export const CanvasCopilotPage = () => {
             )}
 
             <div className="flex-1 relative overflow-auto p-4 w-full h-full flex items-center justify-center">
+              {isGenerating && (
+                <div className="absolute inset-4 z-40 flex flex-col items-center justify-center gap-4 rounded-xl border border-outline-variant/30 bg-surface-container-lowest/95 p-8 backdrop-blur-sm" role="status" aria-live="polite">
+                  <div className="h-12 w-12 animate-spin rounded-full border-4 border-primary/20 border-t-primary" />
+                  <div className="w-full max-w-md space-y-3">
+                    <p className="text-center text-sm font-semibold text-on-surface">Gemini está diseñando tu interfaz…</p>
+                    <div className="h-3 animate-pulse rounded bg-surface-container-high" />
+                    <div className="h-3 w-4/5 animate-pulse rounded bg-surface-container-high" />
+                    <div className="h-24 animate-pulse rounded-lg bg-surface-container-high" />
+                  </div>
+                </div>
+              )}
               <div ref={canvasStageRef} className="relative w-full h-full border border-dashed border-outline-variant/40 rounded-xl overflow-hidden shadow-inner justify-center items-center bg-surface-container-lowest/50" style={{ display: activeTab === 'canvas' ? 'flex' : 'none' }}>
                 {selectedObject && quickToolbarPosition && (
                   <div className="absolute z-30 flex -translate-x-1/2 -translate-y-full items-center gap-1 rounded-lg border border-outline-variant/40 bg-surface-container-highest/95 p-1.5 shadow-xl backdrop-blur-md" style={{ left: quickToolbarPosition.left, top: quickToolbarPosition.top - 8 }} onMouseDown={(event) => event.stopPropagation()}>
@@ -655,15 +640,15 @@ export const CanvasCopilotPage = () => {
                   <div className="flex items-center justify-between px-4 py-2 bg-[#2d2d2d] border-b border-white/10 shrink-0">
                     <div className="flex items-center gap-3">
                       <span className="material-symbols-outlined text-outline text-sm">code</span>
-                      <span className="text-xs font-mono text-outline">{codeViewMode === 'jsx' ? 'Component.jsx' : 'index.html'}</span>
+                      <span className="text-xs font-mono text-outline">{codeViewMode === 'jsx' ? 'GeneratedUI.jsx' : 'index.html'}</span>
                       <div className="flex bg-black/40 rounded p-0.5 ml-4">
                         <button onClick={() => setCodeViewMode('jsx')} className={`px-2 py-1 text-[10px] font-semibold rounded uppercase transition ${codeViewMode === 'jsx' ? 'bg-[#3b82f6] text-white' : 'text-gray-400 hover:text-white'}`}>JSX</button>
                         <button onClick={() => setCodeViewMode('html')} className={`px-2 py-1 text-[10px] font-semibold rounded uppercase transition ${codeViewMode === 'html' ? 'bg-[#10b981] text-white' : 'text-gray-400 hover:text-white'}`}>HTML</button>
                       </div>
                     </div>
-                    <button onClick={copyToClipboard} className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-white/5 hover:bg-white/10 text-xs text-gray-300 transition">
+                    <button onClick={copyToClipboard} aria-label={isCopied ? 'Código copiado' : 'Copiar Código'} className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-white/5 hover:bg-white/10 text-xs text-gray-300 transition">
                       <span className="material-symbols-outlined text-[14px]">{isCopied ? 'check' : 'content_copy'}</span>
-                      {isCopied ? '¡Copiado!' : 'Copiar'}
+                      {isCopied ? '¡Copiado!' : 'Copiar Código'}
                     </button>
                   </div>
                   <div className="flex-1 overflow-auto p-4 flex">
@@ -671,7 +656,7 @@ export const CanvasCopilotPage = () => {
                       {generatedCode ? generatedCode.split('\n').map((_, i) => <div key={i}>{i + 1}</div>) : <div>1</div>}
                     </div>
                     <pre className="text-xs font-mono text-gray-300 flex-1 pl-4 overflow-x-auto whitespace-pre">
-                      {generatedCode ? (codeViewMode === 'html' ? sanitizeJsxForIframe(generatedCode) : generatedCode) : '// Dibuja en el lienzo y presiona "Generar UI"'}
+                      {generatedCode ? formatGeneratedCode() : '// Dibuja en el lienzo y presiona "Generar UI"'}
                     </pre>
                   </div>
                 </div>
@@ -713,38 +698,71 @@ export const CanvasCopilotPage = () => {
                     </div>
                   </div>
 
+                  <div className="space-y-3">
+                    <label className="block space-y-1">
+                      <span className="text-outline font-semibold">Relleno</span>
+                      <div className="flex gap-2">
+                        <input aria-label="Color de relleno" type="color" value={getColorProp('fill', isTextSelection ? '#ffffff' : '#3b82f6')} onChange={(e) => updateProp('fill', e.target.value)} className="h-9 w-10 cursor-pointer rounded border-none bg-transparent" />
+                        <input aria-label="Valor del color de relleno" type="text" value={typeof getProp('fill', '') === 'string' ? getProp('fill', '') : ''} onChange={(e) => updateProp('fill', e.target.value)} className="min-w-0 flex-1 rounded border border-outline-variant/50 bg-surface-container-highest px-2 text-on-surface" />
+                      </div>
+                    </label>
+                    <label className="block space-y-1">
+                      <span className="text-outline font-semibold">Color de borde</span>
+                      <input aria-label="Color de borde" type="color" value={getColorProp('stroke', '#000000')} onChange={(e) => updateProp('stroke', e.target.value)} className="h-9 w-12 cursor-pointer rounded border-none bg-transparent" />
+                    </label>
+                    <label className="block space-y-1">
+                      <span className="text-outline font-semibold">Grosor de borde</span>
+                      <input aria-label="Grosor de borde" type="number" min="0" max="40" value={getProp('strokeWidth', 0)} onChange={(e) => updateProp('strokeWidth', Math.max(0, Number(e.target.value) || 0))} className="w-full rounded border border-outline-variant/50 bg-surface-container-highest p-2 text-on-surface" />
+                    </label>
+                  </div>
+
                   {isTextSelection && (
-                    <div className="space-y-1">
-                      <label className="text-outline font-semibold">Texto</label>
-                      <textarea value={getProp('text', '')} onChange={(e) => updateProp('text', e.target.value)} className="w-full bg-surface-container-highest border border-outline-variant/50 rounded p-2 text-on-surface focus:outline-none" />
-                      <div className="flex items-center justify-between pt-2">
-                        <label className="text-outline">Color</label>
-                        <input type="color" value={getProp('fill', '#ffffff')} onChange={(e) => updateProp('fill', e.target.value)} className="h-8 w-10 cursor-pointer rounded border-none bg-transparent" />
-                      </div>
+                    <div className="space-y-3 border-t border-outline-variant/20 pt-3">
+                      <label className="block space-y-1">
+                        <span className="text-outline font-semibold">Texto</span>
+                        <textarea aria-label="Contenido del texto" value={getProp('text', '')} onChange={(e) => updateProp('text', e.target.value)} className="w-full rounded border border-outline-variant/50 bg-surface-container-highest p-2 text-on-surface focus:outline-none" />
+                      </label>
+                      <label className="block space-y-1">
+                        <span className="text-outline font-semibold">Fuente</span>
+                        <select aria-label="Fuente" value={getProp('fontFamily', 'Inter')} onChange={(e) => updateProp('fontFamily', e.target.value)} className="w-full rounded border border-outline-variant/50 bg-surface-container-highest p-2 text-on-surface">
+                          {['Inter', 'Arial', 'Georgia', 'Times New Roman', 'Courier New', 'sans-serif', 'serif', 'monospace'].map((font) => <option key={font} value={font}>{font}</option>)}
+                        </select>
+                      </label>
+                      <label className="block space-y-1">
+                        <span className="text-outline font-semibold">Tamaño de fuente</span>
+                        <input aria-label="Tamaño de fuente" type="number" min="1" max="200" value={getProp('fontSize', 16)} onChange={(e) => updateProp('fontSize', Math.max(1, Number(e.target.value) || 1))} className="w-full rounded border border-outline-variant/50 bg-surface-container-highest p-2 text-on-surface" />
+                      </label>
+                      <label className="block space-y-1">
+                        <span className="text-outline font-semibold">Alineación</span>
+                        <select aria-label="Alineación del texto" value={getProp('textAlign', 'left')} onChange={(e) => updateProp('textAlign', e.target.value)} className="w-full rounded border border-outline-variant/50 bg-surface-container-highest p-2 text-on-surface">
+                          {['left', 'center', 'right', 'justify'].map((alignment) => <option key={alignment} value={alignment}>{alignment}</option>)}
+                        </select>
+                      </label>
+                      <label className="block space-y-1">
+                        <span className="text-outline font-semibold">Peso</span>
+                        <select aria-label="Peso de fuente" value={String(getProp('fontWeight', 'normal'))} onChange={(e) => updateProp('fontWeight', e.target.value)} className="w-full rounded border border-outline-variant/50 bg-surface-container-highest p-2 text-on-surface">
+                          <option value="normal">Normal</option>
+                          <option value="500">Medium</option>
+                          <option value="600">Semibold</option>
+                          <option value="bold">Negrita</option>
+                        </select>
+                      </label>
                     </div>
                   )}
 
-                  {!isTextSelection && (
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <label className="text-outline">Fondo</label>
-                        <input type="color" value={getProp('fill', '#3b82f6')} onChange={(e) => updateProp('fill', e.target.value)} className="h-8 w-10 cursor-pointer rounded border-none bg-transparent" />
-                      </div>
-                      <div className="grid grid-cols-2 gap-2">
-                        <label className="space-y-1">
-                          <span className="text-outline">Radio (Bordes)</span>
-                          <input type="number" min="0" value={getProp('rx', 0)} onChange={(e) => { const r = parseInt(e.target.value, 10) || 0; updateProp('rx', r); updateProp('ry', r); }} className="w-full bg-surface-container-highest border border-outline-variant/50 rounded p-1" />
-                        </label>
-                      </div>
-                    </div>
+                  {!isTextSelection && selectedObject.type === 'rect' && (
+                    <label className="block space-y-1">
+                      <span className="text-outline font-semibold">Radio (bordes)</span>
+                      <input aria-label="Radio de borde" type="number" min="0" value={getProp('rx', 0)} onChange={(e) => { const radius = Math.max(0, Number(e.target.value) || 0); updateProp('rx', radius); updateProp('ry', radius); }} className="w-full rounded border border-outline-variant/50 bg-surface-container-highest p-2 text-on-surface" />
+                    </label>
                   )}
 
-                  <div className="space-y-1 pt-3 border-t border-outline-variant/20">
+                  <div className="space-y-1 border-t border-outline-variant/20 pt-3">
                     <div className="flex justify-between">
-                      <label className="text-outline font-semibold">Opacidad</label>
+                      <label htmlFor="object-opacity" className="text-outline font-semibold">Opacidad</label>
                       <span>{Math.round(getProp('opacity', 1) * 100)}%</span>
                     </div>
-                    <input type="range" min="0" max="1" step="0.05" value={getProp('opacity', 1)} onChange={(e) => updateProp('opacity', parseFloat(e.target.value))} className="w-full accent-primary" />
+                    <input id="object-opacity" aria-label="Opacidad" type="range" min="0" max="1" step="0.05" value={getProp('opacity', 1)} onChange={(e) => updateProp('opacity', parseFloat(e.target.value))} className="w-full accent-primary" />
                   </div>
                 </div>
               )}

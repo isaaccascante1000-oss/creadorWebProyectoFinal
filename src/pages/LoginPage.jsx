@@ -39,23 +39,24 @@ export const LoginPage = () => {
   };
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
+    const params = new URLSearchParams(location.search || window.location.search);
     if (!isLoading && isAuthenticated && !params.has('code') && !params.has('error')) {
       navigate(getAuthenticatedHome(role), { replace: true });
     }
-  }, [isAuthenticated, isLoading, role, navigate]);
+  }, [isAuthenticated, isLoading, role, navigate, location.search]);
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
+    const callbackSearch = location.search || window.location.search;
+    const params = new URLSearchParams(callbackSearch);
     if (!params.has('code') && !params.has('error')) return undefined;
 
     let active = true;
     const completeOAuth = async () => {
-      oauthCallbackPromise.current ||= authService.completeOAuthCallback();
+      oauthCallbackPromise.current ||= authService.completeOAuthCallback(callbackSearch);
       const result = await oauthCallbackPromise.current;
       if (!active) return;
 
-      window.history.replaceState({}, document.title, window.location.pathname);
+      navigate({ pathname: location.pathname, search: '', hash: '' }, { replace: true });
       if (result.success) {
         const sessionUser = await login();
         if (!sessionUser?.termsAcceptedAt) {
@@ -85,7 +86,7 @@ export const LoginPage = () => {
 
     completeOAuth();
     return () => { active = false; };
-  }, [login, logout, navigate]);
+  }, [login, logout, navigate, location.pathname, location.search]);
 
   return (
     <main className="w-full min-h-screen flex items-center justify-center bg-surface relative overflow-x-hidden">
