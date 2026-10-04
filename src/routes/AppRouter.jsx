@@ -1,20 +1,31 @@
-import React from 'react';
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import LandingPage from '../pages/LandingPage';
 import LoginPage from '../pages/LoginPage';
 import CanvasCopilotPage from '../pages/CanvasCopilotPage';
 import AdminDashboardPage from '../pages/AdminDashboardPage';
 import TermsPage from '../pages/TermsPage';
-import ProtectedRoute from '../components/ProtectedRoute';
+import ProtectedRoute, { PublicOnlyRoute } from '../components/ProtectedRoute';
+
+const OAuthCallbackRedirect = () => {
+  const params = new URLSearchParams(window.location.search);
+  if (params.has('code') || params.has('error')) {
+    return <Navigate to="/login" replace />;
+  }
+  return (
+    <PublicOnlyRoute>
+      <LandingPage />
+    </PublicOnlyRoute>
+  );
+};
 
 export const AppRouter = () => {
   return (
     <HashRouter>
       <Routes>
         {/* Rutas Públicas */}
-        <Route path="/" element={<LandingPage />} />
-        <Route path="/servicios" element={<LandingPage />} />
-        <Route path="/login" element={<LoginPage />} />
+        <Route path="/" element={<OAuthCallbackRedirect />} />
+        <Route path="/servicios" element={<PublicOnlyRoute><LandingPage /></PublicOnlyRoute>} />
+        <Route path="/login" element={<PublicOnlyRoute><LoginPage /></PublicOnlyRoute>} />
         <Route path="/terms" element={<TermsPage />} />
 
         {/* Rutas Privadas solo para Administrador */}

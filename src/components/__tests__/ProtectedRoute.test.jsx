@@ -1,8 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
-import React from 'react';
-import ProtectedRoute from '../ProtectedRoute';
+import ProtectedRoute, { PublicOnlyRoute } from '../ProtectedRoute';
 import * as AuthContext from '../../context/AuthContext';
 
 vi.mock('../../context/AuthContext', () => ({
@@ -16,7 +15,7 @@ describe('ProtectedRoute', () => {
     render(
       <MemoryRouter initialEntries={['/protected']}>
         <Routes>
-          <Route path="/" element={<div data-testid="public">Public Page</div>} />
+          <Route path="/login" element={<div data-testid="public">Public Page</div>} />
           <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
             <Route path="/protected" element={<div data-testid="protected">Protected Content</div>} />
           </Route>
@@ -50,7 +49,7 @@ describe('ProtectedRoute', () => {
     render(
       <MemoryRouter initialEntries={['/protected']}>
         <Routes>
-          <Route path="/copilot" element={<div data-testid="copilot">Copilot Page</div>} />
+          <Route path="/canvas" element={<div data-testid="copilot">Copilot Page</div>} />
           <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
             <Route path="/protected" element={<div data-testid="protected">Protected Content</div>} />
           </Route>
@@ -60,5 +59,47 @@ describe('ProtectedRoute', () => {
 
     expect(screen.getByTestId('copilot')).toBeInTheDocument();
     expect(screen.queryByTestId('protected')).not.toBeInTheDocument();
+  });
+
+  it('redirige desde una ruta pública al área de trabajo cuando ya hay sesión', () => {
+    vi.spyOn(AuthContext, 'useAuth').mockReturnValue({
+      isAuthenticated: true,
+      isLoading: false,
+      role: 'user',
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/']}>
+        <Routes>
+          <Route path="/" element={<PublicOnlyRoute><div>Landing pública</div></PublicOnlyRoute>} />
+          <Route path="/canvas" element={<div data-testid="copilot">Área de trabajo</div>} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    expect(screen.getByTestId('copilot')).toBeInTheDocument();
+    expect(screen.queryByText('Landing pública')).not.toBeInTheDocument();
+  });
+
+  it('restaura el destino previo al login para usuarios autenticados', () => {
+    vi.spyOn(AuthContext, 'useAuth').mockReturnValue({
+      isAuthenticated: true,
+      isLoading: false,
+      role: 'user',
+    });
+
+    render(
+      <MemoryRouter initialEntries={[{
+        pathname: '/login',
+        state: { from: { pathname: '/requested', search: '?tab=recent', hash: '#item' } },
+      }]}>
+        <Routes>
+          <Route path="/login" element={<PublicOnlyRoute><div>Login</div></PublicOnlyRoute>} />
+          <Route path="/requested" element={<div data-testid="requested">Ruta solicitada</div>} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    expect(screen.getByTestId('requested')).toBeInTheDocument();
   });
 });

@@ -1,193 +1,43 @@
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
+const API_BASE_URL = import.meta.env.VITE_AUTH_API_URL || `${window.location.protocol}//${window.location.hostname}:3001`;
 
-// Estado local de respaldo cuando JSON Server no está corriendo
-let localUsers = [
-  { id: '1', email: 'admin@canvasai.fwd', name: 'Isaac Andrés Cascante Linares', role: 'admin' },
-  { id: '2', email: 'usuario@canvasai.fwd', name: 'Usuario Desarrollador FWD', role: 'user' },
-  { id: '3', email: 'maria@canvasai.fwd', name: 'María Rodríguez', role: 'user' },
-];
-
-let localProjects = [
-  { id: 'p1', name: 'Dashboard Administrativo CanvasAI', description: 'Panel de administración y estadísticas de IA', createdAt: '2026-09-15T10:00:00Z', status: 'activo', ownerId: '1' },
-  { id: 'p2', name: 'Lienzo Copilot Generativo', description: 'Estudio visual interactivo con Fabric.js y Gemini 1.5', createdAt: '2026-09-18T11:30:00Z', status: 'en progreso', ownerId: '2' },
-  { id: 'p3', name: 'Landing Page Multimodal', description: 'Página de inicio sintetizada automáticamente', createdAt: '2026-09-20T14:20:00Z', status: 'completado', ownerId: '3' },
-];
+const request = async (path, options = {}) => {
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    ...options,
+    credentials: 'include',
+    headers: {
+      ...(options.body ? { 'Content-Type': 'application/json' } : {}),
+      ...options.headers,
+    },
+  });
+  const data = response.status === 204 ? null : await response.json().catch(() => null);
+  if (!response.ok) throw new Error(data?.error || `Solicitud rechazada (${response.status}).`);
+  return data;
+};
 
 export const apiService = {
-  // ================= USERS CRUD =================
-  async getUsers() {
-    try {
-      const res = await fetch(`${API_BASE_URL}/users`);
-      if (res.ok) {
-        const data = await res.json();
-        localUsers = data;
-        return data;
-      }
-    } catch (e) {
-      console.warn('JSON Server offline, usando usuarios locales de respaldo');
-    }
-    return [...localUsers];
-  },
-
-  async createUser(userData) {
-    const newUser = { id: Date.now().toString(), ...userData };
-    try {
-      const res = await fetch(`${API_BASE_URL}/users`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newUser),
-      });
-      if (res.ok) {
-        return await res.json();
-      }
-    } catch (e) {
-      console.warn('JSON Server offline, guardando usuario en memoria local');
-    }
-    localUsers.push(newUser);
-    return newUser;
-  },
-
-  async updateUser(id, userData) {
-    try {
-      const res = await fetch(`${API_BASE_URL}/users/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(userData),
-      });
-      if (res.ok) {
-        return await res.json();
-      }
-    } catch (e) {
-      console.warn('JSON Server offline, actualizando usuario en memoria local');
-    }
-    localUsers = localUsers.map((u) => (u.id === id ? { ...u, ...userData } : u));
-    return { id, ...userData };
-  },
-
-  async deleteUser(id) {
-    try {
-      const res = await fetch(`${API_BASE_URL}/users/${id}`, {
-        method: 'DELETE',
-      });
-      if (res.ok) {
-        return true;
-      }
-    } catch (e) {
-      console.warn('JSON Server offline, eliminando usuario de memoria local');
-    }
-    localUsers = localUsers.filter((u) => u.id !== id);
+  getUsers: () => request('/api/admin/users'),
+  createUser: (userData) => request('/api/admin/users', { method: 'POST', body: JSON.stringify(userData) }),
+  updateUser: (id, userData) => request(`/api/admin/users/${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify(userData) }),
+  deleteUser: async (id) => {
+    await request(`/api/admin/users/${encodeURIComponent(id)}`, { method: 'DELETE' });
     return true;
   },
-
-  // ================= PROJECTS CRUD =================
-  async getProjects() {
-    try {
-      const res = await fetch(`${API_BASE_URL}/projects`);
-      if (res.ok) {
-        const data = await res.json();
-        localProjects = data;
-        return data;
-      }
-    } catch (e) {
-      console.warn('JSON Server offline, usando proyectos locales de respaldo');
-    }
-    return [...localProjects];
-  },
-
-  async getProjectsByOwner(ownerId) {
-    try {
-      const res = await fetch(`${API_BASE_URL}/projects?ownerId=${ownerId}`);
-      if (res.ok) {
-        return await res.json();
-      }
-    } catch (e) {
-      console.warn('JSON Server offline, buscando proyectos por owner en local');
-    }
-    return localProjects.filter(p => p.ownerId === ownerId);
-  },
-
-  async createProject(projectData) {
-    const newProject = {
-      id: `p_${Date.now()}`,
-      createdAt: new Date().toISOString(),
-      status: 'activo',
-      ...projectData,
-    };
-    try {
-      const res = await fetch(`${API_BASE_URL}/projects`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newProject),
-      });
-      if (res.ok) {
-        return await res.json();
-      }
-    } catch (e) {
-      console.warn('JSON Server offline, guardando proyecto en memoria local');
-    }
-    localProjects.push(newProject);
-    return newProject;
-  },
-
-  async updateProject(id, projectData) {
-    try {
-      const res = await fetch(`${API_BASE_URL}/projects/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(projectData),
-      });
-      if (res.ok) {
-        return await res.json();
-      }
-    } catch (e) {
-      console.warn('JSON Server offline, actualizando proyecto en memoria local');
-    }
-    localProjects = localProjects.map((p) => (p.id === id ? { ...p, ...projectData } : p));
-    return { id, ...projectData };
-  },
-
-  async updateProjectStatus(id, status) {
-    try {
-      const res = await fetch(`${API_BASE_URL}/projects/${id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status }),
-      });
-      if (res.ok) {
-        return await res.json();
-      }
-    } catch (e) {
-      console.warn('JSON Server offline, actualizando estado del proyecto en memoria local');
-    }
-    localProjects = localProjects.map((p) => (p.id === id ? { ...p, status } : p));
-    return { id, status };
-  },
-
-  async deleteProject(id) {
-    try {
-      const res = await fetch(`${API_BASE_URL}/projects/${id}`, {
-        method: 'DELETE',
-      });
-      if (res.ok) {
-        return true;
-      }
-    } catch (e) {
-      console.warn('JSON Server offline, eliminando proyecto de memoria local');
-    }
-    localProjects = localProjects.filter((p) => p.id !== id);
+  getProjects: () => request('/api/projects'),
+  getProjectsByOwner: () => request('/api/projects'),
+  createProject: (projectData) => request('/api/projects', { method: 'POST', body: JSON.stringify(projectData) }),
+  updateProject: (id, projectData) => request(`/api/projects/${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify(projectData) }),
+  updateProjectStatus: (id, status) => request(`/api/projects/${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify({ status }) }),
+  deleteProject: async (id) => {
+    await request(`/api/projects/${encodeURIComponent(id)}`, { method: 'DELETE' });
     return true;
   },
-// ================= ENDPOINT EXTERNO REAL (Requisito 2.3) =================
   async getExternalData() {
     try {
-      const res = await fetch('https://jsonplaceholder.typicode.com/posts?_limit=3');
-      if (res.ok) {
-        return await res.json();
-      }
-    } catch (e) {
-      console.warn('Error consumiendo endpoint externo real');
+      const response = await fetch('https://jsonplaceholder.typicode.com/posts?_limit=3');
+      return response.ok ? response.json() : [];
+    } catch {
+      return [];
     }
-    return [];
   },
 };
 

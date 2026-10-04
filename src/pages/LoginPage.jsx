@@ -1,21 +1,35 @@
-import { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useState, useEffect, useRef } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { VisualStage } from '../components/VisualStage';
 import { AuthCard } from '../components/AuthCard';
 import { ToastNotification } from '../components/ToastNotification';
 import { AccessibilityToolbar } from '../components/AccessibilityToolbar';
 import { useAuth } from '../context/AuthContext';
+import { getAuthenticatedHome } from '../utils/authNavigation';
 import { authService } from '../services/authService';
 
 export const LoginPage = () => {
   const navigate = useNavigate();
-  const { isAuthenticated, role, login } = useAuth();
+  const location = useLocation();
+  const { isAuthenticated, isLoading, role, login, logout } = useAuth();
 
   const [toastState, setToastState] = useState({
     show: false,
     message: '',
     icon: 'task_alt',
   });
+  const oauthCallbackPromise = useRef(null);
+
+  useEffect(() => {
+    const from = location.state?.from;
+    if (from?.pathname) {
+      sessionStorage.setItem('canvasai_auth_redirect', JSON.stringify({
+        pathname: from.pathname,
+        search: from.search || '',
+        hash: from.hash || '',
+      }));
+    }
+  }, [location.state]);
 
   const handleShowToast = (message, icon = 'task_alt') => {
     setToastState({ show: true, message, icon });
@@ -25,26 +39,45 @@ export const LoginPage = () => {
   };
 
   useEffect(() => {
-    if (isAuthenticated) {
-      const targetRoute = role === 'admin' ? '/admin' : '/canvas';
-      navigate(targetRoute, { replace: true });
+    const params = new URLSearchParams(window.location.search);
+    if (!isLoading && isAuthenticated && !params.has('code') && !params.has('error')) {
+      navigate(getAuthenticatedHome(role), { replace: true });
     }
-  }, [isAuthenticated, role, navigate]);
+  }, [isAuthenticated, isLoading, role, navigate]);
 
   useEffect(() => {
-    if (!window.location.search) return undefined;
+    const params = new URLSearchParams(window.location.search);
+    if (!params.has('code') && !params.has('error')) return undefined;
 
     let active = true;
     const completeOAuth = async () => {
-      const result = await authService.completeOAuthCallback();
+      oauthCallbackPromise.current ||= authService.completeOAuthCallback();
+      const result = await oauthCallbackPromise.current;
       if (!active) return;
 
-      const params = new URLSearchParams(window.location.search);
       window.history.replaceState({}, document.title, window.location.pathname);
       if (result.success) {
-        login(result.user);
+        const sessionUser = await login();
+        if (!sessionUser?.termsAcceptedAt) {
+          await logout();
+          handleShowToast('Debes aceptar los Términos y Condiciones para iniciar sesión.', 'warning');
+          return;
+        }
         handleShowToast('Autenticación completada. Redirigiendo...', 'verified_user');
-        navigate(result.user.role === 'admin' ? '/admin' : '/canvas', { replace: true });
+        const savedRedirect = sessionStorage.getItem('canvasai_auth_redirect');
+        sessionStorage.removeItem('canvasai_auth_redirect');
+        let targetRoute = getAuthenticatedHome(sessionUser.role);
+        if (savedRedirect) {
+          try {
+            const from = JSON.parse(savedRedirect);
+            if (typeof from.pathname === 'string' && from.pathname.startsWith('/') && !from.pathname.startsWith('//')) {
+              targetRoute = { pathname: from.pathname, search: from.search || '', hash: from.hash || '' };
+            }
+          } catch (error) {
+            console.warn('No se pudo restaurar la ruta previa al inicio de sesión.', error);
+          }
+        }
+        navigate(targetRoute, { replace: true });
       } else if (params.has('code') || params.has('error')) {
         handleShowToast(result.error, 'error');
       }
@@ -52,7 +85,7 @@ export const LoginPage = () => {
 
     completeOAuth();
     return () => { active = false; };
-  }, [login, navigate]);
+  }, [login, logout, navigate]);
 
   return (
     <main className="w-full min-h-screen flex items-center justify-center bg-surface relative overflow-x-hidden">

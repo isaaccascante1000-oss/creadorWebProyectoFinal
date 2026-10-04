@@ -1,9 +1,27 @@
-import React from 'react';
-import { Navigate, Outlet } from 'react-router-dom';
+import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { getAuthenticatedHome } from '../utils/authNavigation';
+
+export const PublicOnlyRoute = ({ children }) => {
+  const auth = useAuth();
+  const location = useLocation();
+
+  if (auth?.isLoading) return null;
+  if (!auth?.isAuthenticated && !auth?.user) return children;
+
+  const from = location.state?.from;
+  const target = from?.pathname
+    ? { pathname: from.pathname, search: from.search || '', hash: from.hash || '' }
+    : getAuthenticatedHome(auth?.role || auth?.user?.role || auth?.user?.type);
+
+  return <Navigate to={target} replace />;
+};
 
 export const ProtectedRoute = ({ allowedRoles }) => {
   const auth = useAuth();
+  const location = useLocation();
+
+  if (auth?.isLoading) return null;
 
   // Soporta si useAuth devuelve 'isAuthenticated' directamente o evalúa la existencia de 'user'
   const isAuthenticated = auth?.isAuthenticated ?? Boolean(auth?.user);
@@ -15,7 +33,7 @@ export const ProtectedRoute = ({ allowedRoles }) => {
 
   // 1. Si no está autenticado, redirigir explícitamente al login
   if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/login" replace state={{ from: location }} />;
   }
 
   // 2. Validación de permisos por rol (comparación normalizada)

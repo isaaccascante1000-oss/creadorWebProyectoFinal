@@ -1,77 +1,25 @@
-const API_URL = 'http://localhost:3000';
-const AUTH_API_URL = import.meta.env.VITE_AUTH_API_URL || '';
-const AUTH_APP_URL = import.meta.env.VITE_AUTH_APP_URL || `${window.location.origin}/login`;
-
-const DEFAULT_USERS = [
-  {
-    id: "1",
-    email: "admin@canvasai.fwd",
-    password: "123",
-    name: "Isaac Andrés Cascante Linares",
-    role: "admin"
-  },
-  {
-    id: "2",
-    email: "usuario@canvasai.fwd",
-    password: "123",
-    name: "Usuario Desarrollador FWD",
-    role: "user"
-  }
-];
+const AUTH_API_URL = import.meta.env.VITE_AUTH_API_URL || `${window.location.protocol}//${window.location.hostname}:3001`;
+const authAppUrl = new URL(import.meta.env.VITE_AUTH_APP_URL || `${window.location.origin}/login`);
+authAppUrl.hash = '/login';
+const AUTH_APP_URL = authAppUrl.toString();
 
 export const authService = {
-  /**
-   * Autentica un usuario intentando JSON Server y con fallback local.
-   */
-  async login(email, password, selectedRole = 'admin') {
+  async getSession() {
     try {
-      const response = await fetch(`${API_URL}/users?email=${encodeURIComponent(email)}`);
-      if (response.ok) {
-        const users = await response.json();
-        const foundUser = users.find(u => u.email.toLowerCase() === email.toLowerCase());
-        
-        if (foundUser && foundUser.password === password) {
-          // Si coincide la contraseña o en modo dev
-          const sessionUser = {
-            id: foundUser.id,
-            email: foundUser.email,
-            name: foundUser.name,
-            role: foundUser.role || selectedRole
-          };
-          this.setSession(sessionUser);
-          return { success: true, user: sessionUser };
-        }
-      }
+      const response = await fetch(`${AUTH_API_URL}/auth/session`, { credentials: 'include' });
+      if (!response.ok) return null;
+      const data = await response.json();
+      return data.user || null;
     } catch (err) {
-      console.warn('JSON Server no disponible en http://localhost:3000. Usando autenticación local de respaldo.', err);
+      console.warn('No se pudo verificar la sesión en el servidor.', err);
+      return null;
     }
-
-    // Fallback con credenciales predeterminadas
-    const fallbackUser = DEFAULT_USERS.find(u => u.email.toLowerCase() === email.toLowerCase());
-    if (!fallbackUser || fallbackUser.password !== password) {
-      return { success: false, error: 'Correo o contraseña incorrectos.' };
-    }
-    const roleToAssign = fallbackUser ? fallbackUser.role : (selectedRole === 'dev' ? 'user' : selectedRole);
-    
-    const sessionUser = {
-      id: fallbackUser ? fallbackUser.id : Date.now().toString(),
-      email: email,
-      name: fallbackUser ? fallbackUser.name : (email.split('@')[0] || 'Usuario CanvasAI'),
-      role: roleToAssign
-    };
-
-    this.setSession(sessionUser);
-    return { success: true, user: sessionUser };
   },
 
-  startOAuth(provider) {
-    if (!AUTH_API_URL) {
-      return {
-        success: false,
-        error: 'El inicio de sesión social no está configurado en el servidor.',
-      };
+  startOAuth(provider, termsAccepted = false) {
+    if (termsAccepted !== true) {
+      return { success: false, error: 'Debes aceptar los Términos y Condiciones antes de continuar.' };
     }
-
     const normalizedProvider = provider.toLowerCase();
     if (!['google', 'github'].includes(normalizedProvider)) {
       return { success: false, error: 'Proveedor de autenticación no válido.' };
@@ -84,6 +32,7 @@ export const authService = {
     const authorizationUrl = new URL(`/oauth/${normalizedProvider}`, AUTH_API_URL);
     authorizationUrl.searchParams.set('redirect_uri', AUTH_APP_URL);
     authorizationUrl.searchParams.set('state', state);
+    authorizationUrl.searchParams.set('terms_accepted', 'true');
     window.location.assign(authorizationUrl.toString());
 
     return { success: true };
@@ -123,53 +72,21 @@ export const authService = {
         return { success: false, error: data.error || 'No se pudo completar la autenticación.' };
       }
 
-      this.setSession(data.user);
       return { success: true, user: data.user };
     } catch {
       return { success: false, error: 'No se pudo contactar con el servidor de autenticación.' };
     }
   },
 
-  /**
-   * Guarda la sesión en localStorage
-   */
-  setSession(user) {
-    localStorage.setItem('canvasai_user', JSON.stringify(user));
-  },
-
-  /**
-   * Cierra la sesión
-   */
-  logout() {
-    localStorage.removeItem('canvasai_user');
-  },
-
-  /**
-   * Obtiene el usuario actual
-   */
-  getCurrentUser() {
-    const userStr = localStorage.getItem('canvasai_user');
-    if (!userStr) return null;
+  async logout() {
     try {
-      return JSON.parse(userStr);
-    } catch {
-      return null;
+      await fetch(`${AUTH_API_URL}/auth/logout`, {
+        method: 'POST',
+        credentials: 'include',
+      });
+    } catch (err) {
+      console.warn('No se pudo invalidar la sesión remota.', err);
     }
-  },
-
-  /**
-   * Obtiene el rol almacenado
-   */
-  getUserRole() {
-    const user = this.getCurrentUser();
-    return user ? user.role : null;
-  },
-
-  /**
-   * Verifica si existe una sesión activa
-   */
-  isAuthenticated() {
-    return Boolean(this.getCurrentUser());
   }
 };
 

@@ -3,30 +3,20 @@
     {
       "id": "1",
       "email": "admin@canvasai.fwd",
-      "password": "123",
       "name": "Isaac Andrés Cascante Linares",
       "role": "admin"
     },
     {
       "id": "2",
       "email": "usuario@canvasai.fwd",
-      "password": "123",
       "name": "Usuario Desarrollador FWD",
       "role": "user"
     },
     {
-      "id": "1790789350212",
-      "name": "as",
-      "email": "as@gmail.com",
-      "role": "user",
-      "password": "123"
-    },
-    {
-      "id": "1790789374253",
-      "name": "oz ",
-      "email": "oz@gmail.com",
-      "role": "admin",
-      "password": "123"
+      "id": "bb0b779f8f4563ec39ba3ddd",
+      "email": "monocascante8@gmail.com",
+      "name": "angelica ",
+      "role": "admin"
     }
   ],
   "projects": [

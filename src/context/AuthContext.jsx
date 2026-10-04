@@ -1,59 +1,40 @@
-import React, { createContext, useContext, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { authService } from '../services/authService';
 
 const AuthContext = createContext();
 
-/**
- * Intenta parsear el usuario guardado en localStorage de forma segura.
- * Si el valor está corrupto, incompleto o no es un objeto válido con email/role,
- * limpia el storage y retorna null para forzar el estado no-autenticado.
- */
-const getSafeStoredUser = () => {
-  try {
-    const raw = localStorage.getItem('canvasai_user');
-    if (!raw) return null;
-
-    const parsed = JSON.parse(raw);
-
-    // Validar que sea un objeto con campos mínimos esperados
-    if (
-      !parsed ||
-      typeof parsed !== 'object' ||
-      Array.isArray(parsed) ||
-      !parsed.email
-    ) {
-      console.warn('[AuthContext] Datos de sesión inválidos en localStorage. Limpiando...');
-      localStorage.removeItem('canvasai_user');
-      return null;
-    }
-
-    return parsed;
-  } catch (err) {
-    console.warn('[AuthContext] Error al parsear sesión de localStorage. Limpiando...', err);
-    localStorage.removeItem('canvasai_user');
-    return null;
-  }
-};
-
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(getSafeStoredUser);
+  const [user, setUser] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    localStorage.removeItem('canvasai_user');
+    let active = true;
+    authService.getSession().then((sessionUser) => {
+      if (active) {
+        setUser(sessionUser);
+        setIsLoading(false);
+      }
+    });
+    return () => { active = false; };
+  }, []);
 
   const isAuthenticated = !!user;
   const role = user?.role ?? null;
 
-  const login = (userData) => {
-    setUser(userData);
-    localStorage.setItem('canvasai_user', JSON.stringify(userData));
-  };
+  const login = useCallback(async () => {
+    const sessionUser = await authService.getSession();
+    setUser(sessionUser);
+    return sessionUser;
+  }, []);
 
-  const logout = () => {
+  const logout = useCallback(async () => {
+    await authService.logout();
     setUser(null);
-    localStorage.removeItem('canvasai_user');
-    authService.logout();
-  };
+  }, []);
 
   return (
-    <AuthContext.Provider value={{ user, isAuthenticated, role, login, logout }}>
+    <AuthContext.Provider value={{ user, isAuthenticated, isLoading, role, login, logout }}>
       {children}
     </AuthContext.Provider>
   );

@@ -42,16 +42,24 @@ En `.env` del proyecto:
 
 ```env
 VITE_AUTH_API_URL=http://localhost:3001
-VITE_AUTH_APP_URL=http://localhost:5173/login
+VITE_AUTH_APP_URL=http://localhost:5173/login#/login
 
 AUTH_PORT=3001
-APP_URL=http://localhost:5173/login
+APP_URL=http://localhost:5173/login#/login
 AUTH_REDIRECT_URL=http://localhost:3001/oauth/provider-callback
+ALLOWED_EMAIL_DOMAIN=
+ADMIN_EMAILS=admin@canvasai.fwd
 GITHUB_CLIENT_ID=...
 GITHUB_CLIENT_SECRET=...
 GOOGLE_CLIENT_ID=...
 GOOGLE_CLIENT_SECRET=...
+GEMINI_API_KEY=...
+MISTRAL_API_KEY=...
+N8N_CHAT_WEBHOOK_URL=https://n8n.example.com/webhook/chat
+N8N_PROJECT_EXPORT_WEBHOOK_URL=https://n8n.example.com/webhook/project-export
 ```
+
+`GEMINI_API_KEY`, OAuth secrets, n8n webhook URLs y `ADMIN_EMAILS` son variables exclusivas del servidor: no uses el prefijo `VITE_`. Si `ALLOWED_EMAIL_DOMAIN` está vacío, se permiten correos válidos de cualquier dominio; también admite varios dominios separados por comas. CanvasAI solo crea sesiones administrativas para correos incluidos en `ADMIN_EMAILS`. En producción configura `NODE_ENV=production`, HTTPS y un almacén de sesiones persistente compartido entre instancias.
 
 ## Ejecución
 

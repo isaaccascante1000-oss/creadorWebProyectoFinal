@@ -1,13 +1,13 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Canvas, Rect, Circle, IText, Group, Shadow } from 'fabric';
-import { authService } from '../services/authService';
 import { mistralService } from '../services/mistralService';
 import { n8nService } from '../services/n8nService';
 import { AccessibilityToolbar } from '../components/AccessibilityToolbar';
 import { ToastNotification } from '../components/ToastNotification';
 import { CanvasErrorBoundary } from '../components/CanvasErrorBoundary';
 import { useSelection } from '../context/useSelection';
+import { useAuth } from '../context/AuthContext';
 
 const SHADOW_PRESETS = {
   soft: { offsetX: 0, offsetY: 2, blur: 8, css: 'rgba(0,0,0,0.24) 0px 2px 8px' },
@@ -31,27 +31,35 @@ export const CanvasCopilotPage = () => {
     setTimeout(() => setToastState((prev) => ({ ...prev, show: false })), 4000);
   };
 
+  // Procesador avanzado para limpiar alucinaciones y texto conversacional del LLM
   const extractPureCode = (rawText) => {
     if (!rawText) return '';
     let textToProcess = rawText;
+
     try {
       const parsed = JSON.parse(rawText);
-      if (typeof parsed === 'string') textToProcess = parsed;
-      else if (parsed.output) textToProcess = parsed.output;
-      else if (parsed.text) textToProcess = parsed.text;
+      // Extraer de múltiples posibles estructuras de respuesta del Webhook de n8n
+      textToProcess = parsed.output || parsed.text || parsed.code || parsed.jsxCode || parsed;
+      if (typeof textToProcess !== 'string') {
+          textToProcess = JSON.stringify(textToProcess);
+      }
     } catch {
-      // No es JSON, continuar con texto plano
+      // Si no es JSON, asumir que es texto plano directamente desde el LLM
     }
 
-    const jsxMatch = textToProcess.match(/```(?:jsx|html|javascript)?\s*([\s\S]*?)```/i);
+    // 1. Intentar extraer de bloques Markdown de código
+    const jsxMatch = textToProcess.match(/```(?:jsx|html|javascript|tsx)?\s*([\s\S]*?)```/i);
     if (jsxMatch && jsxMatch[1]) {
       return jsxMatch[1].trim();
     }
+
+    // 2. Fallback: Extraer desde la primera etiqueta de apertura hasta la última de cierre
     const firstTag = textToProcess.indexOf('<');
     const lastTag = textToProcess.lastIndexOf('>');
     if (firstTag !== -1 && lastTag !== -1 && lastTag > firstTag) {
       return textToProcess.substring(firstTag, lastTag + 1).trim();
     }
+
     return textToProcess.trim();
   };
 
@@ -73,13 +81,14 @@ export const CanvasCopilotPage = () => {
   const fabricCanvasRef = useRef(null);
   const [canvas, setCanvas] = useState(null);
   const { selectedObject, setSelectedObject } = useSelection();
+  const auth = useAuth();
   const [, setUpdateTrigger] = useState(0);
   const [quickToolbarPosition, setQuickToolbarPosition] = useState(null);
 
-  const currentUser = authService.getCurrentUser();
+  const currentUser = auth.user;
 
-  const handleLogout = () => {
-    authService.logout();
+  const handleLogout = async () => {
+    await auth.logout();
     navigate('/');
   };
 
@@ -92,7 +101,6 @@ export const CanvasCopilotPage = () => {
       .catch(() => undefined);
   };
 
-  // --- INICIALIZACIÓN ROBUSTA DE FABRIC V6 ---
   useEffect(() => {
     if (!canvasRef.current) return;
 
@@ -104,23 +112,21 @@ export const CanvasCopilotPage = () => {
       try {
         await disposePromiseRef.current;
       } catch {
-        // Ignorar errores de dispose previos
+        // Ignorar
       }
 
       if (cancelled || !canvasRef.current) return;
 
       const canvasElement = canvasRef.current;
 
-      // Limpieza preventiva si el elemento conserva propiedades o contexto previos de Fabric.
       if (canvasElement.__fabric) {
         try {
           delete canvasElement.__fabric;
         } catch (error) {
-          console.warn('No se pudo limpiar la referencia previa de Fabric:', error);
+          console.warn('Limpieza previa fallida:', error);
         }
       }
 
-      // Restablecer el contexto 2D después de esperar a dispose() evita conflictos en Strict Mode.
       const previousWidth = canvasElement.width;
       canvasElement.width = 0;
       canvasElement.width = previousWidth;
@@ -136,13 +142,11 @@ export const CanvasCopilotPage = () => {
           selection: true,
         });
       } catch (err) {
-        console.warn('Advertencia durante la creación del Canvas de Fabric:', err);
         return;
       }
 
       if (cancelled) {
         queueCanvasDispose(initCanvas);
-        initCanvas = null;
         return;
       }
 
@@ -150,10 +154,8 @@ export const CanvasCopilotPage = () => {
         fabricCanvasRef.current = initCanvas;
         attachCanvasBehavior(initCanvas, container, canvasStageRef.current);
       } catch (error) {
-        console.warn('Advertencia durante la configuración del Canvas de Fabric:', error);
         fabricCanvasRef.current = null;
         queueCanvasDispose(initCanvas);
-        initCanvas = null;
       }
     };
 
@@ -221,9 +223,7 @@ export const CanvasCopilotPage = () => {
         }
       });
 
-      if (container) {
-        resizeObserver.observe(container);
-      }
+      if (container) resizeObserver.observe(container);
     };
 
     setup();
@@ -234,7 +234,6 @@ export const CanvasCopilotPage = () => {
       const toDispose = fabricCanvasRef.current || initCanvas;
       fabricCanvasRef.current = null;
       queueCanvasDispose(toDispose);
-      initCanvas = null;
       setCanvas(null);
       setSelectedObject(null);
       setQuickToolbarPosition(null);
@@ -262,13 +261,7 @@ export const CanvasCopilotPage = () => {
   const addText = () => {
     const activeCanvas = canvas || fabricCanvasRef.current;
     if (!activeCanvas) return;
-    const text = new IText('Texto Editable', {
-      left: 120,
-      top: 120,
-      fontSize: 20,
-      fill: '#ffffff',
-      fontFamily: 'Inter',
-    });
+    const text = new IText('Texto Editable', { left: 120, top: 120, fontSize: 20, fill: '#ffffff', fontFamily: 'Inter' });
     activeCanvas.add(text);
     activeCanvas.setActiveObject(text);
     activeCanvas.renderAll();
@@ -361,18 +354,14 @@ export const CanvasCopilotPage = () => {
   const bringForward = () => {
     const activeCanvas = canvas || fabricCanvasRef.current;
     if (!activeCanvas || !selectedObject) return;
-    if (typeof selectedObject.bringForward === 'function') {
-      selectedObject.bringForward();
-    }
+    if (typeof selectedObject.bringForward === 'function') selectedObject.bringForward();
     activeCanvas.renderAll();
   };
 
   const sendBackward = () => {
     const activeCanvas = canvas || fabricCanvasRef.current;
     if (!activeCanvas || !selectedObject) return;
-    if (typeof selectedObject.sendBackwards === 'function') {
-      selectedObject.sendBackwards();
-    }
+    if (typeof selectedObject.sendBackwards === 'function') selectedObject.sendBackwards();
     activeCanvas.renderAll();
   };
 
@@ -458,7 +447,7 @@ export const CanvasCopilotPage = () => {
     }
   };
 
-  // Generación flexible: permite generar si hay prompt, incluso con canvas vacío
+  // Petición mejorada con directrices estructurales para el Webhook de N8N
   const handleGenerateUI = async (e) => {
     e?.preventDefault();
     const activeCanvas = canvas || fabricCanvasRef.current;
@@ -469,27 +458,34 @@ export const CanvasCopilotPage = () => {
     }
 
     setIsGenerating(true);
-    showToast('Generando UI...', 'auto_awesome');
+    showToast('Generando UI con N8N...', 'auto_awesome');
 
     try {
       const hasCanvasObjects = Boolean(activeCanvas && activeCanvas.getObjects().length > 0);
       const canvasJSON = hasCanvasObjects ? activeCanvas.toJSON() : {};
+
+      // Estructura de payload optimizada para darle contexto estricto al LLM en N8N
       const payload = {
+        action: 'GENERATE_UI',
+        context: 'Actúa como un desarrollador experto Frontend. Genera código HTML/JSX utilizando TailwindCSS. Responde ÚNICAMENTE con el bloque de código, sin saludos ni explicaciones.',
         prompt: promptText,
-        canvasJson: canvasJSON,
+        canvasData: {
+            objects: canvasJSON.objects || [],
+            background: canvasJSON.background || '#0f172a',
+        },
         user: currentUser,
       };
 
       let result = await n8nService.triggerWorkflow(payload);
-
       let pureCode = '';
+
       if (result.success && result.data) {
-        const rawCode = typeof result.data.jsxCode === 'string' ? result.data.jsxCode : JSON.stringify(result.data.jsxCode);
+        const rawCode = typeof result.data === 'string' ? result.data : JSON.stringify(result.data);
         pureCode = extractPureCode(rawCode);
       }
 
       if (!pureCode) {
-        showToast('N8n sin respuesta, conectando con Mistral AI...', 'sync');
+        showToast('N8n no devolvió código válido, conectando con Mistral AI...', 'sync');
         result = await mistralService.generateUIFromPrompt(promptText, JSON.stringify(canvasJSON));
         if (result.success && result.data) {
           const rawCode = typeof result.data.jsxCode === 'string' ? result.data.jsxCode : JSON.stringify(result.data.jsxCode);
@@ -502,10 +498,10 @@ export const CanvasCopilotPage = () => {
         setActiveTab('iframe');
         showToast('UI Generada con éxito', 'verified');
       } else {
-        showToast(result.error || 'No se pudo generar código a partir del prompt proporcionado.', 'error');
+        showToast(result.error || 'No se pudo parsear el código a partir de la respuesta.', 'error');
       }
     } catch {
-      showToast('Error inesperado al generar la UI', 'error');
+      showToast('Error inesperado al conectar con el motor de IA', 'error');
     } finally {
       setIsGenerating(false);
     }
@@ -520,9 +516,7 @@ export const CanvasCopilotPage = () => {
         setTimeout(() => setIsCopied(false), 2000);
         showToast('¡Código copiado al portapapeles!', 'content_copy');
       })
-      .catch(() => {
-        showToast('Error al copiar el código', 'error');
-      });
+      .catch(() => showToast('Error al copiar el código', 'error'));
   };
 
   const iframeDocument = `
@@ -530,14 +524,15 @@ export const CanvasCopilotPage = () => {
 <html class="dark">
 <head>
   <meta charset="utf-8"/>
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src https://cdn.tailwindcss.com; style-src 'unsafe-inline'; img-src data: blob:; connect-src 'none'; form-action 'none'; base-uri 'none'; frame-ancestors 'none'"/>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     body { background-color: #0b1326; color: #dae2fd; padding: 1.5rem; }
     img { max-width: 100%; height: auto; max-height: 200px; object-fit: cover; border-radius: 0.5rem; }
   </style>
 </head>
-<body class="min-h-screen">
-  ${sanitizeJsxForIframe(generatedCode) || '<div class="text-slate-500 flex items-center justify-center h-full mt-10">Dibuja en el lienzo y presiona "Generar UI" para visualizar el código sintetizado.</div>'}
+<body class="min-h-screen flex items-center justify-center">
+  ${sanitizeJsxForIframe(generatedCode) || '<div class="text-slate-500">Dibuja en el lienzo y presiona "Generar UI" para visualizar el código sintetizado.</div>'}
 </body>
 </html>`;
 
@@ -553,29 +548,14 @@ export const CanvasCopilotPage = () => {
           </Link>
         </div>
 
-        <div className="flex items-center gap-1 p-1 bg-surface-container-lowest rounded-lg border border-outline-variant/20" role="tablist" aria-label="Vistas del editor">
-          <button
-            role="tab"
-            aria-selected={activeTab === 'canvas'}
-            onClick={() => setActiveTab('canvas')}
-            className={`px-3 py-1 rounded-md text-xs font-bold transition cursor-pointer ${activeTab === 'canvas' ? 'bg-primary text-black shadow' : 'text-on-surface-variant hover:text-on-surface'}`}
-          >
+        <div className="flex items-center gap-1 p-1 bg-surface-container-lowest rounded-lg border border-outline-variant/20" role="tablist">
+          <button role="tab" aria-selected={activeTab === 'canvas'} onClick={() => setActiveTab('canvas')} className={`px-3 py-1 rounded-md text-xs font-bold transition cursor-pointer ${activeTab === 'canvas' ? 'bg-primary text-black shadow' : 'text-on-surface-variant hover:text-on-surface'}`}>
             Lienzo
           </button>
-          <button
-            role="tab"
-            aria-selected={activeTab === 'iframe'}
-            onClick={() => setActiveTab('iframe')}
-            className={`px-3 py-1 rounded-md text-xs font-bold transition cursor-pointer ${activeTab === 'iframe' ? 'bg-primary text-black shadow' : 'text-on-surface-variant hover:text-on-surface'}`}
-          >
+          <button role="tab" aria-selected={activeTab === 'iframe'} onClick={() => setActiveTab('iframe')} className={`px-3 py-1 rounded-md text-xs font-bold transition cursor-pointer ${activeTab === 'iframe' ? 'bg-primary text-black shadow' : 'text-on-surface-variant hover:text-on-surface'}`}>
             Iframe
           </button>
-          <button
-            role="tab"
-            aria-selected={activeTab === 'code'}
-            onClick={() => setActiveTab('code')}
-            className={`px-3 py-1 rounded-md text-xs font-bold transition cursor-pointer ${activeTab === 'code' ? 'bg-primary text-black shadow' : 'text-on-surface-variant hover:text-on-surface'}`}
-          >
+          <button role="tab" aria-selected={activeTab === 'code'} onClick={() => setActiveTab('code')} className={`px-3 py-1 rounded-md text-xs font-bold transition cursor-pointer ${activeTab === 'code' ? 'bg-primary text-black shadow' : 'text-on-surface-variant hover:text-on-surface'}`}>
             Código
           </button>
         </div>
@@ -583,23 +563,18 @@ export const CanvasCopilotPage = () => {
         <div className="flex items-center gap-3">
           <AccessibilityToolbar />
           <div className="flex items-center gap-2">
-            <button
-              onClick={handleExportProjectToN8N}
-              disabled={isExportingN8N}
-              className="px-3 py-1 rounded-md bg-secondary-container/30 border border-secondary/40 text-secondary text-xs font-semibold flex items-center gap-1.5 cursor-pointer hover:bg-secondary-container/50 transition disabled:opacity-60"
-            >
+            <button onClick={handleExportProjectToN8N} disabled={isExportingN8N} className="px-3 py-1 rounded-md bg-secondary-container/30 border border-secondary/40 text-secondary text-xs font-semibold flex items-center gap-1.5 cursor-pointer hover:bg-secondary-container/50 transition disabled:opacity-60">
               <span className="material-symbols-outlined text-base">hub</span> {isExportingN8N ? 'Enviando...' : 'Exportar N8N'}
             </button>
-            {n8nStatusMsg && <span className="text-[10px] text-outline" role="status">{n8nStatusMsg}</span>}
+            {n8nStatusMsg && <span className="text-[10px] text-outline">{n8nStatusMsg}</span>}
           </div>
-          <button onClick={handleLogout} className="text-xs text-outline px-2.5 py-1 rounded border border-outline-variant/20 hover:bg-surface-container-high transition">
-            Salir
-          </button>
+          <button onClick={handleLogout} className="text-xs text-outline px-2.5 py-1 rounded border border-outline-variant/20 hover:bg-surface-container-high transition">Salir</button>
         </div>
       </header>
 
       <CanvasErrorBoundary>
         <div className="flex-1 flex overflow-hidden">
+          {/* Panel Izquierdo */}
           <div className="w-64 bg-surface-container-low border-r border-outline-variant/30 flex flex-col shrink-0 overflow-y-auto">
             <div className="p-4 border-b border-outline-variant/20">
               <h3 className="text-xs uppercase text-outline font-semibold mb-3">Dibujo Básico</h3>
@@ -611,7 +586,7 @@ export const CanvasCopilotPage = () => {
                   <span className="material-symbols-outlined text-tertiary">circle</span> Círculo
                 </button>
                 <button onClick={addText} className="p-2 rounded bg-surface-container hover:bg-surface-container-high text-xs flex flex-col items-center gap-1 border border-outline-variant/20 transition col-span-2">
-                  <span className="material-symbols-outlined text-secondary">title</span> Texto Editable
+                  <span className="material-symbols-outlined text-secondary">title</span> Texto
                 </button>
               </div>
             </div>
@@ -631,21 +606,22 @@ export const CanvasCopilotPage = () => {
             </div>
           </div>
 
+          {/* Lienzo Central */}
           <div className="flex-1 bg-surface-dim relative flex flex-col h-full overflow-hidden">
             {activeTab === 'canvas' && (
               <div className="h-12 border-b border-outline-variant/30 flex items-center justify-between px-4 bg-surface-container-lowest shrink-0">
                 <div className="flex items-center gap-2">
-                  <button onClick={deleteSelected} disabled={!selectedObject} aria-label="Eliminar seleccionado" className="p-1.5 rounded hover:bg-surface-container-high disabled:opacity-30 text-error transition" title="Eliminar seleccionado">
+                  <button onClick={deleteSelected} disabled={!selectedObject} className="p-1.5 rounded hover:bg-surface-container-high disabled:opacity-30 text-error transition" title="Eliminar">
                     <span className="material-symbols-outlined text-lg">delete</span>
                   </button>
-                  <button onClick={cloneSelected} disabled={!selectedObject} aria-label="Duplicar" className="p-1.5 rounded hover:bg-surface-container-high disabled:opacity-30 text-on-surface transition" title="Duplicar">
+                  <button onClick={cloneSelected} disabled={!selectedObject} className="p-1.5 rounded hover:bg-surface-container-high disabled:opacity-30 text-on-surface transition" title="Duplicar">
                     <span className="material-symbols-outlined text-lg">content_copy</span>
                   </button>
                   <div className="w-px h-5 bg-outline-variant/40 mx-1"></div>
-                  <button onClick={bringForward} disabled={!selectedObject} aria-label="Traer adelante" className="p-1.5 rounded hover:bg-surface-container-high disabled:opacity-30 text-on-surface transition" title="Traer adelante">
+                  <button onClick={bringForward} disabled={!selectedObject} className="p-1.5 rounded hover:bg-surface-container-high disabled:opacity-30 text-on-surface transition" title="Traer al frente">
                     <span className="material-symbols-outlined text-lg">flip_to_front</span>
                   </button>
-                  <button onClick={sendBackward} disabled={!selectedObject} aria-label="Enviar atrás" className="p-1.5 rounded hover:bg-surface-container-high disabled:opacity-30 text-on-surface transition" title="Enviar atrás">
+                  <button onClick={sendBackward} disabled={!selectedObject} className="p-1.5 rounded hover:bg-surface-container-high disabled:opacity-30 text-on-surface transition" title="Enviar atrás">
                     <span className="material-symbols-outlined text-lg">flip_to_back</span>
                   </button>
                 </div>
@@ -656,32 +632,11 @@ export const CanvasCopilotPage = () => {
             )}
 
             <div className="flex-1 relative overflow-auto p-4 w-full h-full flex items-center justify-center">
-              <div
-                ref={canvasStageRef}
-                className="relative w-full h-full border border-dashed border-outline-variant/40 rounded-xl overflow-hidden shadow-inner justify-center items-center bg-surface-container-lowest/50"
-                style={{ minHeight: '500px', display: activeTab === 'canvas' ? 'flex' : 'none' }}
-              >
+              <div ref={canvasStageRef} className="relative w-full h-full border border-dashed border-outline-variant/40 rounded-xl overflow-hidden shadow-inner justify-center items-center bg-surface-container-lowest/50" style={{ display: activeTab === 'canvas' ? 'flex' : 'none' }}>
                 {selectedObject && quickToolbarPosition && (
-                  <div
-                    className="absolute z-30 flex -translate-x-1/2 -translate-y-full items-center gap-1 rounded-lg border border-outline-variant/40 bg-surface-container-highest/95 p-1.5 shadow-xl backdrop-blur-md"
-                    style={{ left: quickToolbarPosition.left, top: quickToolbarPosition.top - 8 }}
-                    role="toolbar"
-                    aria-label="Acciones del elemento seleccionado"
-                    onMouseDown={(event) => event.stopPropagation()}
-                  >
-                    <button type="button" onClick={cloneSelected} className="rounded-md p-1.5 text-on-surface transition hover:bg-surface-container-high" title="Duplicar">
-                      <span className="material-symbols-outlined text-lg">content_copy</span>
-                    </button>
-                    <button type="button" onClick={deleteSelected} className="rounded-md p-1.5 text-error transition hover:bg-error-container/30" title="Eliminar">
-                      <span className="material-symbols-outlined text-lg">delete</span>
-                    </button>
-                    <span className="mx-0.5 h-5 w-px bg-outline-variant/40" />
-                    <button type="button" onClick={bringForward} className="rounded-md p-1.5 text-on-surface transition hover:bg-surface-container-high" title="Traer al frente">
-                      <span className="material-symbols-outlined text-lg">flip_to_front</span>
-                    </button>
-                    <button type="button" onClick={sendBackward} className="rounded-md p-1.5 text-on-surface transition hover:bg-surface-container-high" title="Enviar atrás">
-                      <span className="material-symbols-outlined text-lg">flip_to_back</span>
-                    </button>
+                  <div className="absolute z-30 flex -translate-x-1/2 -translate-y-full items-center gap-1 rounded-lg border border-outline-variant/40 bg-surface-container-highest/95 p-1.5 shadow-xl backdrop-blur-md" style={{ left: quickToolbarPosition.left, top: quickToolbarPosition.top - 8 }} onMouseDown={(event) => event.stopPropagation()}>
+                    <button type="button" onClick={cloneSelected} className="rounded-md p-1.5 text-on-surface hover:bg-surface-container-high" title="Duplicar"><span className="material-symbols-outlined text-lg">content_copy</span></button>
+                    <button type="button" onClick={deleteSelected} className="rounded-md p-1.5 text-error hover:bg-error-container/30" title="Eliminar"><span className="material-symbols-outlined text-lg">delete</span></button>
                   </div>
                 )}
                 <div className="flex h-full w-full items-center justify-center">
@@ -690,13 +645,8 @@ export const CanvasCopilotPage = () => {
               </div>
 
               {activeTab === 'iframe' && (
-                <div className="w-full h-full rounded-xl border border-outline-variant/30 overflow-hidden">
-                  <iframe
-                    srcDoc={iframeDocument}
-                    title="Preview UI"
-                    className="w-full h-full bg-black border-none"
-                    sandbox="allow-scripts"
-                  />
+                <div className="w-full h-full rounded-xl border border-outline-variant/30 overflow-hidden bg-black flex items-center justify-center">
+                  <iframe srcDoc={iframeDocument} title="Preview UI" className="w-full h-full border-none" sandbox="allow-scripts" referrerPolicy="no-referrer" />
                 </div>
               )}
 
@@ -705,33 +655,23 @@ export const CanvasCopilotPage = () => {
                   <div className="flex items-center justify-between px-4 py-2 bg-[#2d2d2d] border-b border-white/10 shrink-0">
                     <div className="flex items-center gap-3">
                       <span className="material-symbols-outlined text-outline text-sm">code</span>
-                      <span className="text-xs font-mono text-outline">{codeViewMode === 'jsx' ? 'GeneratedComponent.jsx' : 'index.html'}</span>
+                      <span className="text-xs font-mono text-outline">{codeViewMode === 'jsx' ? 'Component.jsx' : 'index.html'}</span>
                       <div className="flex bg-black/40 rounded p-0.5 ml-4">
-                        <button onClick={() => setCodeViewMode('jsx')} className={`px-2 py-1 text-[10px] font-semibold rounded uppercase transition ${codeViewMode === 'jsx' ? 'bg-[#3b82f6] text-white' : 'text-gray-400 hover:text-white'}`}>
-                          JSX / React
-                        </button>
-                        <button onClick={() => setCodeViewMode('html')} className={`px-2 py-1 text-[10px] font-semibold rounded uppercase transition ${codeViewMode === 'html' ? 'bg-[#10b981] text-white' : 'text-gray-400 hover:text-white'}`}>
-                          HTML Puro
-                        </button>
+                        <button onClick={() => setCodeViewMode('jsx')} className={`px-2 py-1 text-[10px] font-semibold rounded uppercase transition ${codeViewMode === 'jsx' ? 'bg-[#3b82f6] text-white' : 'text-gray-400 hover:text-white'}`}>JSX</button>
+                        <button onClick={() => setCodeViewMode('html')} className={`px-2 py-1 text-[10px] font-semibold rounded uppercase transition ${codeViewMode === 'html' ? 'bg-[#10b981] text-white' : 'text-gray-400 hover:text-white'}`}>HTML</button>
                       </div>
                     </div>
                     <button onClick={copyToClipboard} className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-white/5 hover:bg-white/10 text-xs text-gray-300 transition">
                       <span className="material-symbols-outlined text-[14px]">{isCopied ? 'check' : 'content_copy'}</span>
-                      {isCopied ? '¡Copiado!' : 'Copiar Código'}
+                      {isCopied ? '¡Copiado!' : 'Copiar'}
                     </button>
                   </div>
                   <div className="flex-1 overflow-auto p-4 flex">
                     <div className="text-right pr-4 border-r border-white/10 select-none text-gray-600 font-mono text-xs w-10 shrink-0">
-                      {generatedCode
-                        ? generatedCode.split('\n').map((_, i) => <div key={i}>{i + 1}</div>)
-                        : <div>1</div>}
+                      {generatedCode ? generatedCode.split('\n').map((_, i) => <div key={i}>{i + 1}</div>) : <div>1</div>}
                     </div>
                     <pre className="text-xs font-mono text-gray-300 flex-1 pl-4 overflow-x-auto whitespace-pre">
-                      {generatedCode
-                        ? codeViewMode === 'html'
-                          ? sanitizeJsxForIframe(generatedCode)
-                          : generatedCode
-                        : '// Dibuja en el lienzo y presiona "Generar UI"\n// El código limpio aparecerá aquí.'}
+                      {generatedCode ? (codeViewMode === 'html' ? sanitizeJsxForIframe(generatedCode) : generatedCode) : '// Dibuja en el lienzo y presiona "Generar UI"'}
                     </pre>
                   </div>
                 </div>
@@ -740,20 +680,14 @@ export const CanvasCopilotPage = () => {
 
             <form onSubmit={handleGenerateUI} className="p-4 bg-surface-container-low border-t border-outline-variant/30 shrink-0">
               <div className="max-w-4xl mx-auto flex items-center gap-3">
-                <label htmlFor="ui-prompt" className="sr-only">Descripción de la UI a generar</label>
                 <input
-                  id="ui-prompt"
                   type="text"
                   value={promptText}
                   onChange={(e) => setPromptText(e.target.value)}
-                  placeholder="Describe qué quieres generar a partir del lienzo..."
+                  placeholder="Describe qué quieres generar (ej. Tarjeta de perfil oscura)..."
                   className="flex-1 bg-surface-container-highest border border-outline-variant/50 rounded-lg px-4 py-2 text-sm text-on-surface focus:outline-none focus:border-primary transition"
                 />
-                <button
-                  type="submit"
-                  disabled={isGenerating}
-                  className="px-6 py-2 rounded-lg bg-primary text-black font-bold text-sm flex items-center gap-2 hover:opacity-90 transition disabled:opacity-50 cursor-pointer shadow"
-                >
+                <button type="submit" disabled={isGenerating} className="px-6 py-2 rounded-lg bg-primary text-black font-bold text-sm flex items-center gap-2 hover:opacity-90 transition disabled:opacity-50 cursor-pointer shadow">
                   <span className="text-black font-bold">{isGenerating ? 'Generando...' : 'Generar UI'}</span>
                   <span className="material-symbols-outlined text-[18px] text-black font-bold">auto_awesome</span>
                 </button>
@@ -761,50 +695,30 @@ export const CanvasCopilotPage = () => {
             </form>
           </div>
 
+          {/* Panel Derecho */}
           {activeTab === 'canvas' && (
             <div className="w-72 bg-surface-container-low border-l border-outline-variant/30 flex flex-col shrink-0 overflow-y-auto">
               <div className="p-4 border-b border-outline-variant/20 font-semibold text-sm text-on-surface flex items-center gap-2">
-                <span className="material-symbols-outlined">tune</span> Personalizar Elemento
+                <span className="material-symbols-outlined">tune</span> Propiedades
               </div>
 
               {!selectedObject ? (
-                <div className="p-6 text-center text-xs text-outline">Selecciona un elemento en el lienzo para ver sus propiedades.</div>
+                <div className="p-6 text-center text-xs text-outline">Selecciona un elemento para editarlo.</div>
               ) : (
                 <div className="p-4 space-y-4 text-xs">
                   <div className="flex items-center justify-between border-b border-outline-variant/20 pb-3">
                     <div>
-                      <p className="text-[10px] uppercase tracking-wider text-outline">Elemento seleccionado</p>
-                      <p className="font-semibold text-on-surface">{isTextSelection ? 'Texto' : 'Contenedor / botón'}</p>
+                      <p className="text-[10px] uppercase text-outline">Tipo</p>
+                      <p className="font-semibold text-on-surface">{selectedObject.type}</p>
                     </div>
-                    <span className="rounded bg-primary/15 px-2 py-1 text-[10px] font-semibold text-primary">{selectedObject.type}</span>
                   </div>
 
                   {isTextSelection && (
                     <div className="space-y-1">
-                      <label className="text-outline font-semibold" htmlFor="prop-text">Contenido del Texto</label>
-                      <textarea
-                        id="prop-text"
-                        value={getProp('text', '')}
-                        onChange={(e) => updateProp('text', e.target.value)}
-                        className="w-full bg-surface-container-highest border border-outline-variant/50 rounded p-2 text-on-surface focus:outline-none"
-                      />
-
-                      <div className="grid grid-cols-2 gap-2 mt-2">
-                        <div className="space-y-1">
-                          <label className="text-outline">Tam. Fuente</label>
-                          <input type="number" value={getProp('fontSize', 16)} onChange={(e) => updateProp('fontSize', parseInt(e.target.value, 10) || 12)} className="w-full bg-surface-container-highest border border-outline-variant/50 rounded p-1" />
-                        </div>
-                        <div className="space-y-1">
-                          <label className="text-outline">Peso</label>
-                          <select value={getProp('fontWeight', 'normal')} onChange={(e) => updateProp('fontWeight', e.target.value)} className="w-full bg-surface-container-highest border border-outline-variant/50 rounded p-1">
-                            <option value="normal">Regular</option>
-                            <option value="500">Medio</option>
-                            <option value="bold">Negrita</option>
-                          </select>
-                        </div>
-                      </div>
+                      <label className="text-outline font-semibold">Texto</label>
+                      <textarea value={getProp('text', '')} onChange={(e) => updateProp('text', e.target.value)} className="w-full bg-surface-container-highest border border-outline-variant/50 rounded p-2 text-on-surface focus:outline-none" />
                       <div className="flex items-center justify-between pt-2">
-                        <label className="text-outline">Color del texto</label>
+                        <label className="text-outline">Color</label>
                         <input type="color" value={getProp('fill', '#ffffff')} onChange={(e) => updateProp('fill', e.target.value)} className="h-8 w-10 cursor-pointer rounded border-none bg-transparent" />
                       </div>
                     </div>
@@ -812,84 +726,18 @@ export const CanvasCopilotPage = () => {
 
                   {!isTextSelection && (
                     <div className="space-y-2">
-                      <p className="text-outline font-semibold">Apariencia</p>
                       <div className="flex items-center justify-between">
-                        <label className="text-outline">Background</label>
+                        <label className="text-outline">Fondo</label>
                         <input type="color" value={getProp('fill', '#3b82f6')} onChange={(e) => updateProp('fill', e.target.value)} className="h-8 w-10 cursor-pointer rounded border-none bg-transparent" />
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <label className="text-outline">Borde</label>
-                        <input type="color" value={getProp('stroke', '#000000')} onChange={(e) => updateProp('stroke', e.target.value)} className="w-8 h-8 rounded border-none bg-transparent cursor-pointer" />
                       </div>
                       <div className="grid grid-cols-2 gap-2">
                         <label className="space-y-1">
-                          <span className="text-outline">Radio</span>
-                          <input
-                            type="number"
-                            min="0"
-                            value={getProp('rx', 0)}
-                            onChange={(e) => {
-                              const radius = parseInt(e.target.value, 10) || 0;
-                              updateProp('rx', radius);
-                              updateProp('ry', radius);
-                            }}
-                            className="w-full bg-surface-container-highest border border-outline-variant/50 rounded p-1"
-                          />
+                          <span className="text-outline">Radio (Bordes)</span>
+                          <input type="number" min="0" value={getProp('rx', 0)} onChange={(e) => { const r = parseInt(e.target.value, 10) || 0; updateProp('rx', r); updateProp('ry', r); }} className="w-full bg-surface-container-highest border border-outline-variant/50 rounded p-1" />
                         </label>
-                        <label className="space-y-1">
-                          <span className="text-outline">Padding</span>
-                          <input type="number" min="0" value={getProp('padding', 0)} onChange={(e) => updateProp('padding', parseInt(e.target.value, 10) || 0)} className="w-full bg-surface-container-highest border border-outline-variant/50 rounded p-1" />
-                        </label>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <label className="text-outline">Sombra</label>
-                        <select value={shadowPreset} onChange={(e) => updateShadow(e.target.value)} className="bg-surface-container-highest border border-outline-variant/50 rounded p-1">
-                          <option value="none">Sin sombra</option>
-                          <option value="soft">Suave</option>
-                          <option value="strong">Profunda</option>
-                          {shadowPreset === 'custom' && <option value="custom">Personalizada</option>}
-                        </select>
                       </div>
                     </div>
                   )}
-
-                  <div className="space-y-2 pt-3 border-t border-outline-variant/20">
-                    <label className="text-outline font-semibold">Geometría</label>
-                    <div className="grid grid-cols-2 gap-2">
-                      <div className="space-y-1">
-                        <label className="text-[10px] text-outline">Ancho</label>
-                        <input
-                          type="number"
-                          value={Math.round(getProp('width', 0) * getProp('scaleX', 1))}
-                          onChange={(e) => {
-                            updateProp('width', parseInt(e.target.value, 10) || 10);
-                            updateProp('scaleX', 1);
-                          }}
-                          className="w-full bg-surface-container-highest border border-outline-variant/50 rounded p-1"
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <label className="text-[10px] text-outline">Alto</label>
-                        <input
-                          type="number"
-                          value={Math.round(getProp('height', 0) * getProp('scaleY', 1))}
-                          onChange={(e) => {
-                            updateProp('height', parseInt(e.target.value, 10) || 10);
-                            updateProp('scaleY', 1);
-                          }}
-                          className="w-full bg-surface-container-highest border border-outline-variant/50 rounded p-1"
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <label className="text-[10px] text-outline">Posición X</label>
-                        <input type="number" value={Math.round(getProp('left', 0))} onChange={(e) => updateProp('left', parseInt(e.target.value, 10) || 0)} className="w-full bg-surface-container-highest border border-outline-variant/50 rounded p-1" />
-                      </div>
-                      <div className="space-y-1">
-                        <label className="text-[10px] text-outline">Posición Y</label>
-                        <input type="number" value={Math.round(getProp('top', 0))} onChange={(e) => updateProp('top', parseInt(e.target.value, 10) || 0)} className="w-full bg-surface-container-highest border border-outline-variant/50 rounded p-1" />
-                      </div>
-                    </div>
-                  </div>
 
                   <div className="space-y-1 pt-3 border-t border-outline-variant/20">
                     <div className="flex justify-between">
@@ -904,7 +752,6 @@ export const CanvasCopilotPage = () => {
           )}
         </div>
       </CanvasErrorBoundary>
-
       <ToastNotification show={toastState.show} message={toastState.message} icon={toastState.icon} />
     </div>
   );

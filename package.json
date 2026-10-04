@@ -10,7 +10,7 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "vitest run",
-    "dev:all": "concurrently \"npm run dev\" \"npm run auth:dev\" \"npx json-server --watch db.json --port 3000\""
+    "dev:all": "concurrently \"npm run dev\" \"npm run auth:dev\""
   },
   "dependencies": {
     "fabric": "^7.4.0",

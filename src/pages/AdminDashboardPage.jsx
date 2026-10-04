@@ -25,9 +25,9 @@ export const AdminDashboardPage = () => {
   
   // Respaldo seguro con encadenamiento opcional (?.) en cada campo
   // para evitar errores si auth.user está indefinido o mal formado
-  const currentUser = auth?.user ?? authService.getCurrentUser() ?? { 
-    name: 'Administrador (Simulado)', 
-    email: 'admin@local.dev', 
+  const currentUser = auth?.user ?? {
+    name: 'Administrador',
+    email: '',
     role: 'admin' 
   };
 
@@ -40,7 +40,7 @@ export const AdminDashboardPage = () => {
   const [activeTab, setActiveTab] = useState('users');
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
-  const [userFormData, setUserFormData] = useState({ name: '', email: '', role: 'user', password: '123' });
+  const [userFormData, setUserFormData] = useState({ name: '', email: '', role: 'user' });
 
   const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
   const [editingProject, setEditingProject] = useState(null);
@@ -95,10 +95,10 @@ export const AdminDashboardPage = () => {
   const handleOpenUserModal = (user = null) => {
     if (user) {
       setEditingUser(user);
-      setUserFormData({ name: user.name || '', email: user.email || '', role: user.role || 'user', password: user.password || '123' });
+      setUserFormData({ name: user.name || '', email: user.email || '', role: user.role || 'user' });
     } else {
       setEditingUser(null);
-      setUserFormData({ name: '', email: '', role: 'user', password: '123' });
+      setUserFormData({ name: '', email: '', role: 'user' });
     }
     setIsUserModalOpen(true);
   };
