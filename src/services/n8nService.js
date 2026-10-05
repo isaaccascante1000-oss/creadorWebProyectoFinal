@@ -2,6 +2,12 @@ import { getErrorMessage } from '../utils/errorMessage';
 
 const API_URL = import.meta.env.VITE_AUTH_API_URL || `${window.location.protocol}//${window.location.hostname}:3001`;
 
+const cleanGeneratedCode = (value) => String(value)
+  .trim()
+  .replace(/^```(?:html|jsx|xml)?\s*/i, '')
+  .replace(/\s*```$/, '')
+  .trim();
+
 const postProxyRequest = async (path, payload) => {
   try {
     const response = await fetch(`${API_URL}${path}`, {
@@ -32,16 +38,16 @@ const postProxyRequest = async (path, payload) => {
 export const n8nService = {
   async triggerWorkflow(payload = {}) {
     const result = await postProxyRequest('/api/n8n/chat', {
-      action: 'GENERATE_UI',
+      action: 'chat',
       prompt: typeof payload.prompt === 'string' ? payload.prompt : '',
-      canvasData: payload.canvasData && typeof payload.canvasData === 'object' ? payload.canvasData : {},
     });
     if (!result.success) return result;
 
     const responseData = result.data;
     let code = responseData.output || responseData.text || responseData.code || responseData.jsxCode || responseData.message || responseData.response || responseData;
     if (Array.isArray(code)) code = code[0]?.output || code[0]?.text || code;
-    return { success: true, data: { jsxCode: typeof code === 'string' ? code : JSON.stringify(code) }, error: null };
+    const generatedCode = typeof code === 'string' ? code : JSON.stringify(code);
+    return { success: true, data: { jsxCode: cleanGeneratedCode(generatedCode) }, error: null };
   },
 
   async sendProjectExportWebhook(projectData = {}) {

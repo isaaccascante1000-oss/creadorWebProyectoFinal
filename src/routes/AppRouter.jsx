@@ -3,6 +3,7 @@ import LandingPage from '../pages/LandingPage';
 import LoginPage from '../pages/LoginPage';
 import CanvasCopilotPage from '../pages/CanvasCopilotPage';
 import AdminDashboardPage from '../pages/AdminDashboardPage';
+import DashboardPage from '../pages/DashboardPage';
 import TermsPage from '../pages/TermsPage';
 import ProtectedRoute, { PublicOnlyRoute } from '../components/ProtectedRoute';
 
@@ -30,9 +31,13 @@ export const AppRouter = () => {
         <Route path="/login" element={<PublicOnlyRoute><LoginPage /></PublicOnlyRoute>} />
         <Route path="/terms" element={<TermsPage />} />
 
-        {/* Rutas Privadas solo para Administrador */}
+        {/* Panel administrativo y dashboard de proyectos */}
+        <Route element={<ProtectedRoute allowedRoles={['admin', 'user', 'dev', 'Administrador', 'Desarrollador', 'ADMIN', 'DEV', 'USER']} />}>
+          <Route path="/dashboard" element={<DashboardPage />} />
+        </Route>
+
+        {/* Rutas privadas solo para administrador */}
         <Route element={<ProtectedRoute allowedRoles={['admin', 'Administrador', 'ADMIN']} />}>
-          <Route path="/dashboard" element={<AdminDashboardPage />} />
           <Route path="/admin" element={<AdminDashboardPage />} />
         </Route>
 

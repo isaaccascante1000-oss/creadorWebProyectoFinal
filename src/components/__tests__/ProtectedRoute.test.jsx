@@ -61,7 +61,7 @@ describe('ProtectedRoute', () => {
     expect(screen.queryByTestId('protected')).not.toBeInTheDocument();
   });
 
-  it('redirige desde una ruta pública al área de trabajo cuando ya hay sesión', () => {
+  it('redirige desde una ruta pública al Dashboard cuando ya hay sesión', () => {
     vi.spyOn(AuthContext, 'useAuth').mockReturnValue({
       isAuthenticated: true,
       isLoading: false,
@@ -72,16 +72,18 @@ describe('ProtectedRoute', () => {
       <MemoryRouter initialEntries={['/']}>
         <Routes>
           <Route path="/" element={<PublicOnlyRoute><div>Landing pública</div></PublicOnlyRoute>} />
+          <Route path="/dashboard" element={<div data-testid="dashboard">Dashboard</div>} />
           <Route path="/canvas" element={<div data-testid="copilot">Área de trabajo</div>} />
         </Routes>
       </MemoryRouter>
     );
 
-    expect(screen.getByTestId('copilot')).toBeInTheDocument();
+    expect(screen.getByTestId('dashboard')).toBeInTheDocument();
+    expect(screen.queryByTestId('copilot')).not.toBeInTheDocument();
     expect(screen.queryByText('Landing pública')).not.toBeInTheDocument();
   });
 
-  it('restaura el destino previo al login para usuarios autenticados', () => {
+  it('prioriza el Dashboard sobre el destino previo para usuarios autenticados', () => {
     vi.spyOn(AuthContext, 'useAuth').mockReturnValue({
       isAuthenticated: true,
       isLoading: false,
@@ -95,11 +97,13 @@ describe('ProtectedRoute', () => {
       }]}>
         <Routes>
           <Route path="/login" element={<PublicOnlyRoute><div>Login</div></PublicOnlyRoute>} />
+          <Route path="/dashboard" element={<div data-testid="dashboard">Dashboard</div>} />
           <Route path="/requested" element={<div data-testid="requested">Ruta solicitada</div>} />
         </Routes>
       </MemoryRouter>
     );
 
-    expect(screen.getByTestId('requested')).toBeInTheDocument();
+    expect(screen.getByTestId('dashboard')).toBeInTheDocument();
+    expect(screen.queryByTestId('requested')).not.toBeInTheDocument();
   });
 });

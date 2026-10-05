@@ -65,7 +65,7 @@ describe('AppRouter Navigation & Protection', () => {
     window.location.hash = '#/';
   });
 
-  it('redirige un usuario autenticado desde la Landing Page al canvas', async () => {
+  it('redirige un usuario autenticado desde la Landing Page al Dashboard', async () => {
     authService.getSession.mockResolvedValue({
       id: 'user',
       role: 'user',
@@ -79,7 +79,22 @@ describe('AppRouter Navigation & Protection', () => {
       </AuthProvider>
     );
 
-    expect(await screen.findByText('Área de trabajo')).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Tus proyectos' })).toBeInTheDocument();
+  });
+
+  it('permite que un usuario autenticado abra el dashboard de proyectos', async () => {
+    window.location.hash = '#/dashboard';
+    authService.getSession.mockResolvedValue({ id: 'user', role: 'user' });
+
+    render(
+      <AuthProvider>
+        <AccessibilityProvider>
+          <AppRouter />
+        </AccessibilityProvider>
+      </AuthProvider>
+    );
+
+    expect(await screen.findByRole('heading', { name: 'Tus proyectos' })).toBeInTheDocument();
   });
 
   it('redirige un administrador autenticado desde /login al panel', async () => {
@@ -118,7 +133,7 @@ describe('AppRouter Navigation & Protection', () => {
       </AuthProvider>
     );
 
-    expect(await screen.findByText('Área de trabajo')).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Tus proyectos' })).toBeInTheDocument();
     expect(authService.completeOAuthCallback).toHaveBeenCalledOnce();
   });
 });

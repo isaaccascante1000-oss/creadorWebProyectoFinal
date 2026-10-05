@@ -55,4 +55,37 @@ describe('n8nService project export', () => {
       error: 'El webhook no está disponible.',
     });
   });
+
+  it('sends UI prompts to the chat webhook with the expected action and payload', async () => {
+    fetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({ output: ' \n```html\n<section class="p-4">Diseño</section>\n``` \n' }),
+    });
+
+    const result = await n8nService.triggerWorkflow({ prompt: 'Crea una tarjeta' });
+
+    expect(fetch.mock.calls[0][0]).toContain('/api/n8n/chat');
+    expect(JSON.parse(fetch.mock.calls[0][1].body)).toEqual({
+      action: 'chat',
+      prompt: 'Crea una tarjeta',
+    });
+    expect(result).toEqual({
+      success: true,
+      data: { jsxCode: '<section class="p-4">Diseño</section>' },
+      error: null,
+    });
+  });
+
+  it.each(['html', 'jsx', 'xml', ''])('removes %s Markdown fences before returning generated code', async (language) => {
+    const fenceMarker = String.fromCharCode(96).repeat(3);
+    const fence = language ? `${fenceMarker}${language}` : fenceMarker;
+    fetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({ output: ` \n${fence}\n<section>Diseño</section>\n${fenceMarker} \n` }),
+    });
+
+    const result = await n8nService.triggerWorkflow({ prompt: 'Crea una sección' });
+
+    expect(result.data.jsxCode).toBe('<section>Diseño</section>');
+  });
 });

@@ -3,6 +3,25 @@ const authAppUrl = new URL(import.meta.env.VITE_AUTH_APP_URL || `${window.locati
 authAppUrl.hash = '/login';
 const AUTH_APP_URL = authAppUrl.toString();
 
+const postAuthRequest = async (path, payload, fallbackError) => {
+  try {
+    const response = await fetch(`${AUTH_API_URL}${path}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(payload),
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      const error = typeof data.error === 'string' ? data.error : data.error?.message;
+      return { success: false, data: null, error: error || fallbackError };
+    }
+    return { success: true, data, error: null };
+  } catch {
+    return { success: false, data: null, error: 'No se pudo contactar con el servidor de autenticación.' };
+  }
+};
+
 export const authService = {
   async getSession() {
     try {
@@ -79,6 +98,14 @@ export const authService = {
     } catch {
       return { success: false, error: 'No se pudo contactar con el servidor de autenticación.' };
     }
+  },
+
+  requestEmailCode(email) {
+    return postAuthRequest('/auth/email-code/request', { email, termsAccepted: true }, 'No se pudo enviar el código de verificación.');
+  },
+
+  verifyEmailCode(email, code) {
+    return postAuthRequest('/auth/email-code/verify', { email, code }, 'No se pudo verificar el código.');
   },
 
   async logout() {

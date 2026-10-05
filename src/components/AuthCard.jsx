@@ -2,10 +2,14 @@ import { useState } from 'react';
 import { authService } from '../services/authService';
 import TermsModal from './TermsModal';
 
-export const AuthCard = ({ onShowToast }) => {
+export const AuthCard = ({ onShowToast, onEmailVerified }) => {
   const [loadingProvider, setLoadingProvider] = useState('');
   const [isTermsOpen, setIsTermsOpen] = useState(false);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [email, setEmail] = useState('');
+  const [verificationCode, setVerificationCode] = useState('');
+  const [codeSent, setCodeSent] = useState(false);
+  const [emailAction, setEmailAction] = useState('');
 
   const handleOAuth = (provider) => {
     if (!acceptedTerms) {
@@ -18,6 +22,36 @@ export const AuthCard = ({ onShowToast }) => {
       setLoadingProvider('');
       onShowToast?.(result.error, 'error');
     }
+  };
+
+  const handleRequestEmailCode = async (event) => {
+    event.preventDefault();
+    if (!acceptedTerms) {
+      onShowToast?.('Acepta los Términos y Condiciones antes de continuar.', 'warning');
+      return;
+    }
+    setEmailAction('request');
+    const result = await authService.requestEmailCode(email.trim());
+    setEmailAction('');
+    if (!result.success) {
+      onShowToast?.(result.error, 'error');
+      return;
+    }
+    setCodeSent(true);
+    onShowToast?.('Si el correo es válido, recibirás un código de verificación.', 'mark_email_read');
+  };
+
+  const handleVerifyEmailCode = async (event) => {
+    event.preventDefault();
+    setEmailAction('verify');
+    const result = await authService.verifyEmailCode(email.trim(), verificationCode);
+    setEmailAction('');
+    if (!result.success) {
+      onShowToast?.(result.error, 'error');
+      return;
+    }
+    onShowToast?.('Correo verificado. Iniciando sesión...', 'verified_user');
+    onEmailVerified?.();
   };
 
   return (
@@ -70,8 +104,69 @@ export const AuthCard = ({ onShowToast }) => {
           ))}
         </div>
 
+        <div className="my-6 flex items-center gap-3 text-xs text-on-surface-variant" aria-hidden="true">
+          <span className="h-px flex-1 bg-outline-variant/30" />
+          <span>o con correo</span>
+          <span className="h-px flex-1 bg-outline-variant/30" />
+        </div>
+
+        <form onSubmit={codeSent ? handleVerifyEmailCode : handleRequestEmailCode} className="space-y-3">
+          <label htmlFor="auth-email" className="block text-sm font-medium text-on-surface-variant">
+            Correo electrónico
+          </label>
+          <input
+            id="auth-email"
+            type="email"
+            required
+            autoComplete="email"
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+            placeholder="nombre@ejemplo.com"
+            disabled={Boolean(emailAction)}
+            className="w-full h-12 rounded-lg bg-surface-container-lowest border border-outline-variant/30 px-4 text-on-surface placeholder:text-outline focus:outline-none focus:border-primary disabled:opacity-60"
+          />
+          {codeSent && (
+            <>
+              <label htmlFor="verification-code" className="block text-sm font-medium text-on-surface-variant">
+                Código de verificación
+              </label>
+              <input
+                id="verification-code"
+                type="text"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                pattern="[0-9]{6}"
+                maxLength={6}
+                required
+                value={verificationCode}
+                onChange={(event) => setVerificationCode(event.target.value.replace(/\D/g, '').slice(0, 6))}
+                placeholder="000000"
+                disabled={Boolean(emailAction)}
+                className="w-full h-12 rounded-lg bg-surface-container-lowest border border-outline-variant/30 px-4 text-center font-mono text-lg tracking-[0.35em] text-on-surface placeholder:text-outline focus:outline-none focus:border-primary disabled:opacity-60"
+              />
+            </>
+          )}
+          <button
+            type="submit"
+            disabled={!acceptedTerms || Boolean(emailAction)}
+            className="w-full h-12 rounded-lg bg-primary text-on-primary font-semibold transition hover:brightness-105 disabled:opacity-60"
+          >
+            {emailAction === 'request' ? 'Enviando código...' : emailAction === 'verify' ? 'Verificando...' : codeSent ? 'Verificar código' : 'Continuar con correo'}
+          </button>
+          {codeSent && (
+            <button
+              type="button"
+              onClick={handleRequestEmailCode}
+              disabled={!acceptedTerms || Boolean(emailAction)}
+              className="w-full py-2 text-sm font-semibold text-primary hover:underline disabled:opacity-60"
+            >
+              Reenviar código
+            </button>
+          )}
+        </form>
+
         <p className="mt-6 text-center font-label-sm text-label-sm text-on-surface-variant">
-          Se aceptan cuentas de correo estándar verificadas por el proveedor.
+          También puedes verificar tu cuenta mediante un código enviado por correo.
         </p>
       </div>
 

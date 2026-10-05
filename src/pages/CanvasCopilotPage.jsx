@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Canvas, Rect, Circle, IText, Group } from 'fabric';
-import { geminiService } from '../services/geminiService';
 import { n8nService } from '../services/n8nService';
 import { AccessibilityToolbar } from '../components/AccessibilityToolbar';
 import { ToastNotification } from '../components/ToastNotification';
@@ -451,17 +450,15 @@ export const CanvasCopilotPage = () => {
     }
 
     setIsGenerating(true);
-    showToast('Generando la interfaz con Gemini...', 'auto_awesome');
+    showToast('Generando la interfaz...', 'auto_awesome');
 
     try {
-      const canvasData = serializeCanvasForAI(activeCanvas);
-      const result = await geminiService.generateUIFromPrompt(
-        `${promptText}\n\nDevuelve únicamente HTML válido y bien formateado, con clases Tailwind CSS. No incluyas JavaScript, scripts ni explicaciones.`,
-        JSON.stringify(canvasData),
-      );
+      const result = await n8nService.triggerWorkflow({
+        prompt: `${promptText}\n\nDevuelve únicamente HTML válido y bien formateado, con clases Tailwind CSS. No incluyas JavaScript, scripts ni explicaciones.`,
+      });
 
       if (!result.success) {
-        showToast(getErrorMessage(result.error, 'No se pudo generar la interfaz con Gemini.'), 'error');
+        showToast(getErrorMessage(result.error, 'No se pudo generar la interfaz.'), 'error');
         return;
       }
 
@@ -473,9 +470,9 @@ export const CanvasCopilotPage = () => {
 
       setGeneratedCode(markup);
       setActiveTab('iframe');
-      showToast('Interfaz generada con Gemini.', 'verified');
+      showToast('Interfaz generada.', 'verified');
     } catch (error) {
-      showToast(getErrorMessage(error, 'Error inesperado al conectar con Gemini.'), 'error');
+      showToast(getErrorMessage(error, 'Error inesperado al conectar con el servicio de generación.'), 'error');
     } finally {
       setIsGenerating(false);
     }

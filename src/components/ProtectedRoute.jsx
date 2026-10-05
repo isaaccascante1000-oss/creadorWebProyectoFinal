@@ -4,17 +4,11 @@ import { getAuthenticatedHome } from '../utils/authNavigation';
 
 export const PublicOnlyRoute = ({ children }) => {
   const auth = useAuth();
-  const location = useLocation();
 
   if (auth?.isLoading) return null;
   if (!auth?.isAuthenticated && !auth?.user) return children;
 
-  const from = location.state?.from;
-  const target = from?.pathname
-    ? { pathname: from.pathname, search: from.search || '', hash: from.hash || '' }
-    : getAuthenticatedHome(auth?.role || auth?.user?.role || auth?.user?.type);
-
-  return <Navigate to={target} replace />;
+  return <Navigate to={getAuthenticatedHome()} replace />;
 };
 
 export const ProtectedRoute = ({ allowedRoles }) => {

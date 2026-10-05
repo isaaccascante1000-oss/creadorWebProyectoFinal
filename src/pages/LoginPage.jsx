@@ -5,13 +5,12 @@ import { AuthCard } from '../components/AuthCard';
 import { ToastNotification } from '../components/ToastNotification';
 import { AccessibilityToolbar } from '../components/AccessibilityToolbar';
 import { useAuth } from '../context/AuthContext';
-import { getAuthenticatedHome } from '../utils/authNavigation';
 import { authService } from '../services/authService';
 
 export const LoginPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { isAuthenticated, isLoading, role, login, logout } = useAuth();
+  const { isAuthenticated, isLoading, login, logout } = useAuth();
 
   const [toastState, setToastState] = useState({
     show: false,
@@ -19,17 +18,6 @@ export const LoginPage = () => {
     icon: 'task_alt',
   });
   const oauthCallbackPromise = useRef(null);
-
-  useEffect(() => {
-    const from = location.state?.from;
-    if (from?.pathname) {
-      sessionStorage.setItem('canvasai_auth_redirect', JSON.stringify({
-        pathname: from.pathname,
-        search: from.search || '',
-        hash: from.hash || '',
-      }));
-    }
-  }, [location.state]);
 
   const handleShowToast = (message, icon = 'task_alt') => {
     setToastState({ show: true, message, icon });
@@ -41,9 +29,9 @@ export const LoginPage = () => {
   useEffect(() => {
     const params = new URLSearchParams(location.search || window.location.search);
     if (!isLoading && isAuthenticated && !params.has('code') && !params.has('error')) {
-      navigate(getAuthenticatedHome(role), { replace: true });
+      navigate('/dashboard', { replace: true });
     }
-  }, [isAuthenticated, isLoading, role, navigate, location.search]);
+  }, [isAuthenticated, isLoading, navigate, location.search]);
 
   useEffect(() => {
     const callbackSearch = location.search || window.location.search;
@@ -65,20 +53,7 @@ export const LoginPage = () => {
           return;
         }
         handleShowToast('Autenticación completada. Redirigiendo...', 'verified_user');
-        const savedRedirect = sessionStorage.getItem('canvasai_auth_redirect');
-        sessionStorage.removeItem('canvasai_auth_redirect');
-        let targetRoute = getAuthenticatedHome(sessionUser.role);
-        if (savedRedirect) {
-          try {
-            const from = JSON.parse(savedRedirect);
-            if (typeof from.pathname === 'string' && from.pathname.startsWith('/') && !from.pathname.startsWith('//')) {
-              targetRoute = { pathname: from.pathname, search: from.search || '', hash: from.hash || '' };
-            }
-          } catch (error) {
-            console.warn('No se pudo restaurar la ruta previa al inicio de sesión.', error);
-          }
-        }
-        navigate(targetRoute, { replace: true });
+        navigate('/dashboard', { replace: true });
       } else if (params.has('code') || params.has('error')) {
         handleShowToast(result.error, 'error');
       }
@@ -87,6 +62,17 @@ export const LoginPage = () => {
     completeOAuth();
     return () => { active = false; };
   }, [login, logout, navigate, location.pathname, location.search]);
+
+  const handleEmailVerified = async () => {
+    const sessionUser = await login();
+    if (!sessionUser?.termsAcceptedAt) {
+      await logout();
+      handleShowToast('No se pudo completar el inicio de sesión por correo.', 'error');
+      return;
+    }
+    handleShowToast('Correo verificado. Redirigiendo...', 'verified_user');
+    navigate('/dashboard', { replace: true });
+  };
 
   return (
     <main className="w-full min-h-screen flex items-center justify-center bg-surface relative overflow-x-hidden">
@@ -112,7 +98,7 @@ export const LoginPage = () => {
             <VisualStage />
 
             {/* Right Region: Authentication Hub */}
-            <AuthCard onShowToast={handleShowToast} />
+            <AuthCard onShowToast={handleShowToast} onEmailVerified={handleEmailVerified} />
           </div>
         </div>
       </div>
